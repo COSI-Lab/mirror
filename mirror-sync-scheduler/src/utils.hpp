@@ -6,30 +6,33 @@
 #include <thread>
 #include <vector>
 
-#include <signal.h>
-
 #include <mirror/logger.hpp>
 #include <nlohmann/json.hpp>
 
 #include "queue.hpp"
 #include "schedule.hpp"
 
-// read json in from a file
-//@param filename std::string json file to read
-//@return json object
+/**
+ * @brief read json in from a file
+ *
+ * @param filename std::string json file to read
+ *
+ * @return json object
+ */
 // TODO: convert file parameter to `const std::filesystem::path&`
-auto readJSONFromFile(std::string filename) -> nlohmann::json
+auto read_JSON_from_file(const std::string& filename) -> nlohmann::json
 {
-    std::ifstream  f(filename);
-    nlohmann::json config = nlohmann::json::parse(f);
-    f.close();
+    auto config = nlohmann::json::parse(std::ifstream(filename));
+
     return config;
 }
 
-// thread for handling manual sync through std input
 // !: I feel like there has to be a better way to do this
 // TODO: Think of alternative methods for manual syncs. `stdin` could be useful
 // in addition to API endpoint, but probably not really needed.
+/**
+ * @brief thread for handling manual sync through stdin
+ */
 auto cin_thread() -> void
 {
     // create a pointer to the queue
@@ -43,10 +46,12 @@ auto cin_thread() -> void
     }
 }
 
-// thread that sends a message to the log server every 29 minutes to keep the
-// socket from closing
 // ?: Do we actually want to keep alive or let the connection drop and
 // reconnect when we need to send a message?
+/**
+ * @brief thread that sends a message to the log server every 29 minutes to keep
+ * the socket from closing
+ */
 auto keep_alive_thread() -> void
 {
     mirror::Logger* logger = mirror::Logger::getInstance();
@@ -60,8 +65,10 @@ auto keep_alive_thread() -> void
     }
 }
 
-// thread that updates the schedule and syncCommandMap whenever there is any
-// change made to mirrors.json
+/**
+ * @brief thread that updates the schedule and syncCommandMap whenever there is
+ * any change made to mirrors.json
+ */
 auto update_schedule_thread() -> void
 {
     // create a pointer to the schedule
@@ -91,7 +98,7 @@ auto update_schedule_thread() -> void
                          "Generating new sync schedule\n";
 
             // retrieve the mirror data from mirrors.json
-            nlohmann::json config = readJSONFromFile("configs/mirrors.json");
+            nlohmann::json config = read_JSON_from_file("configs/mirrors.json");
 
             // build the schedule based on the mirrors.json config
             schedule->build(config.at("mirrors"));
