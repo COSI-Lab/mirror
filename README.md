@@ -58,11 +58,10 @@ great place. If you need help or have questions about contributing, please
 >
 > - The website serves pages to visitors of mirror.clarkson.edu.
 >
-> - The API serves information about what we mirror to other modules.
->
-> - The log server records log events from other modules.
->
 > - The metrics engine collects data about how Mirror is used.
+>
+> - The map module sends data from the metrics engine over a websocket, adding
+>   approximate locations to it.
 >
 > ## Maintainability
 >

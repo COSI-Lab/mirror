@@ -41,7 +41,7 @@ public class GeoIPDatabase {
         }
         catch(IOException e){
             log.error("Failed to configure GeoIP database.");
-            e.printStackTrace();
+            log.debug(e.toString());
         }
         log.info("Done configuring GeoIP database.");
     }
@@ -53,7 +53,12 @@ public class GeoIPDatabase {
         }
         InetAddress ip = InetAddress.getByName(ipAddress);
         CityResponse response = reader.city(ip);
-        return new double[]{response.getLocation().getLatitude(), response.getLocation().getLongitude()};
+        Double latitude = response.getLocation().getLatitude();
+        Double longitude = response.getLocation().getLongitude();
+        if(latitude == null | longitude == null) {
+            throw new IOException("Failed to get latitude/longitude from GeoIP database.");
+        }
+        return new double[]{latitude, longitude};
     }
 
 }
