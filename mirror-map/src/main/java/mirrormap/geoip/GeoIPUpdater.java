@@ -35,7 +35,7 @@ public class GeoIPUpdater implements Runnable {
     public GeoIPUpdater() throws IOException, ParseException {
         log = Log.getInstance();
         JsonObject env = JsonObject.from(
-                Files.readString(Path.of("configs/mirror-map-env.json"))
+                Files.readString(Path.of("configs/mirror-map.json"))
         );
         DATABASE_URL = ((JsonString) env.get("database_url")).value();
         CHECKSUM_URL = ((JsonString) env.get("checksum_url")).value();
