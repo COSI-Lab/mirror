@@ -5,15 +5,8 @@
 #include <string>
 #include <thread>
 
-// Library Includes
-#include <zmq.hpp>
 
 namespace mirror {
-
-    /**
-     * Context for the connection to the log server. Defined in `logger.cpp`
-     */
-    extern zmq::context_t socketContext;
 
     /**
      * Singleton class to be used when logging in projects associated with the Clarkson Open Source Institute's Mirror
@@ -92,20 +85,17 @@ namespace mirror {
 
         // Configuration
         /**
-         * Configures the connection to the log server
-         *
-         * **Must be called before any log messages can be sent**
-         *
-         * @param port Port that the log server is running on
+         * Must be called before any log messages can be sent.
          * @param componentName Name of the component that the logger is being used in
-         * @param address IP address of the machine that the log server is running on
          */
-        void configure(uint16_t port, const std::string &componentName, const std::string &address = "localhost");
+        void configure(const std::string &componentName);
         
         /**
-         * Shuts down the socket and destroys the Logger.
+         * Destroys the Logger.
          */
         inline void close() { Logger::getInstance()->~Logger(); }
+
+
 
     protected: // Functions
         /**
@@ -113,20 +103,12 @@ namespace mirror {
          */
         inline Logger() : m_Configured(false) {}
 
-        // Destructor
         /**
-         * Destructor for the Logger class. Destroys the socket and context when called.
+         * Destructor for the Logger class. 
          */
-        inline ~Logger() { m_LogServerSocket.close(); socketContext.shutdown(); }
+        inline ~Logger() {}
 
     private: // Functions
-        /**
-         * Sends a line of text to the log server
-         *
-         * @param lineToSend Message to send to the log server
-         */
-        void f_SendLine(const std::string &lineToSend);
-
         /**
          * Prints a log event to stdout.
          * @param level_tag Level tag ( ex. [ DEBUG ] ) to prepend message with
@@ -146,16 +128,6 @@ namespace mirror {
         static std::mutex s_AccessMutex;
 
         /**
-         * Socket used to communicate with the log server
-         */
-        zmq::socket_t m_LogServerSocket{socketContext, zmq::socket_type::stream};
-
-        /**
-         * URL of the log server
-         */
-        std::string m_URL;
-
-        /**
          * False until `configure()` is run.
          *
          * If false, will cause program shutdown if an attempt is made to send a line to the log server
@@ -163,7 +135,7 @@ namespace mirror {
         bool m_Configured;
 
         /**
-         * Name of the component this class is instantiated in. Sent to the log server with each log message
+         * Name of the component this class is instantiated in. Included in log messages
          */
         std::string m_ComponentName;
 
