@@ -7,6 +7,8 @@ add_executable(${PROJECT_NAME}
     src/queue.cpp
 )
 
+set_property(TARGET ${PROJECT_NAME} PROPERTY CXX_STANDARD 23)
+
 include(FetchContent)
 
 FetchContent_Declare(json
