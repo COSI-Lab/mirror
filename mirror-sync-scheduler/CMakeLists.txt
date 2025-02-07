@@ -1,25 +1,14 @@
-cmake_minimum_required(VERSION 3.22)
-project(syncScheduler)
+cmake_minimum_required(VERSION 3.20...3.30)
 
-add_executable(${PROJECT_NAME}
-    src/main.cpp
-    src/schedule.cpp
-    src/queue.cpp
+find_program(CLANG_TIDY_EXE NAMES "clang-tidy" REQUIRED)
+set(CLANG_TIDY_COMMAND ${CLANG_TIDY_EXE} --config-file=${CMAKE_SOURCE_DIR}/../.clang-tidy --header-filter=${CMAKE_SOURCE_DIR}/include)
+
+project(syncScheduler
+    LANGUAGES CXX
 )
 
-set_property(TARGET ${PROJECT_NAME} PROPERTY CXX_STANDARD 23)
-
-include(FetchContent)
-
-FetchContent_Declare(json
-    GIT_REPOSITORY https://github.com/nlohmann/json
-    GIT_TAG v3.11.3
-)
-FetchContent_MakeAvailable(json)
+include(cmake/fetch_deps.cmake)
 
 add_subdirectory(lib/mirror-logging)
+add_subdirectory(src)
 
-target_link_libraries(${PROJECT_NAME} 
-    PUBLIC mirror-logging
-    PRIVATE nlohmann_json::nlohmann_json
-)
