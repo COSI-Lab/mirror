@@ -11,6 +11,8 @@
 
 #include <mirror/logger.hpp>
 
+namespace mirror::sync_scheduler
+{
 class Queue
 {
   public: // Constructors
@@ -151,3 +153,4 @@ class Queue
      */
     mirror::Logger* m_Logger = mirror::Logger::getInstance();
 };
+} // namespace mirror::sync_scheduler

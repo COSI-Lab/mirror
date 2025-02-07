@@ -1,7 +1,5 @@
-#include "schedule.hpp"
+#include <mirror/sync_scheduler/schedule.hpp>
 
-#include <atomic>
-#include <ctime>
 #include <iostream>
 #include <map>
 #include <string>
@@ -11,7 +9,9 @@
 
 #include <nlohmann/json.hpp>
 
-// private constructor for schedule class
+namespace mirror::sync_scheduler
+{ // private constructor for schedule class
+
 Schedule::Schedule()
     : iterator(0)
 {
@@ -22,7 +22,7 @@ Schedule::Schedule()
 auto Schedule::getInstance() -> Schedule*
 {
     // a static variable is not updated when getInstance is called a second time
-    static Schedule* schedule = new Schedule;
+    static auto* schedule = new Schedule;
     return schedule;
 }
 
@@ -141,22 +141,23 @@ auto Schedule::verifySchedule(const std::vector<Task>& tasks) -> bool
 // TODO: See if there is a better return value for this function
 auto Schedule::nextJob(int& seconds_to_sleep) -> std::vector<std::string>*
 {
-    double total_seconds_day = 86400.0;
+    constexpr auto total_seconds_day
+        = std::chrono::duration_cast<std::chrono::seconds>(std::chrono::days(1)
+        );
 
-    // calculate seconds_since_midnight
-    // TODO: Use `std::chrono`
-    std::time_t now    = std::time(0);
-    std::tm*    tm_gmt = std::gmtime(&now);
-    int         seconds_since_midnight_gmt
-        = tm_gmt->tm_sec + (tm_gmt->tm_min * 60) + (tm_gmt->tm_hour * 3600);
+    const auto now = std::chrono::utc_clock::now();
+    const auto time_since_midnight
+        = std::chrono::duration_cast<std::chrono::seconds>(
+            now - std::chrono::floor<std::chrono::days>(now)
+        );
 
     // convert seconds_since_midnight to position in the schedule (0.0 <=
     // scheduleTime <= 1.0)
-    double scheduleTime
-        = static_cast<double>(seconds_since_midnight_gmt / total_seconds_day);
+    const auto scheduleTime = time_since_midnight / total_seconds_day;
 
     /*
      * Find the first job that is greater than the current time.
+     *
      * We start at `iterator` so that we dont have to search the entire job
      * array each time. We do it in this way so that if we start the program in
      * the middle of the day it will still select the correct job. In normal
@@ -206,7 +207,7 @@ auto Schedule::parseTasks(nlohmann::json& config) -> std::vector<Task>
 {
     std::vector<Task> tasks;
     // create a vector of task structs from mirrors.json
-    for (auto& x : config.items())
+    for (const auto& x : config.items())
     {
         nlohmann::json Xvalue = x.value();
         nlohmann::json rsync  = Xvalue.at("rsync");
@@ -227,5 +228,7 @@ auto Schedule::parseTasks(nlohmann::json& config) -> std::vector<Task>
             tasks.emplace_back(task);
         }
     }
+
     return tasks;
 }
+} // namespace mirror::sync_scheduler

@@ -1,3 +1,5 @@
+#pragma once
+
 #include <chrono>
 #include <filesystem>
 #include <fstream>
@@ -9,34 +11,41 @@
 #include <mirror/logger.hpp>
 #include <nlohmann/json.hpp>
 
-#include "queue.hpp"
-#include "schedule.hpp"
+#include <mirror/sync_scheduler/queue.hpp>
+#include <mirror/sync_scheduler/schedule.hpp>
 
+namespace mirror::sync_scheduler
+{
 /**
  * @brief read json in from a file
  *
  * @param filename std::string json file to read
  *
  * @return json object
+ *
+ * @note
+ * TODO: convert file parameter to `const std::filesystem::path&`
  */
-// TODO: convert file parameter to `const std::filesystem::path&`
 auto read_JSON_from_file(const std::string& filename) -> nlohmann::json
 {
-    auto config = nlohmann::json::parse(std::ifstream(filename));
+    auto jsonObj = nlohmann::json::parse(std::ifstream(filename));
 
-    return config;
+    return jsonObj;
 }
 
-// !: I feel like there has to be a better way to do this
-// TODO: Think of alternative methods for manual syncs. `stdin` could be useful
-// in addition to API endpoint, but probably not really needed.
 /**
  * @brief thread for handling manual sync through stdin
+ *
+ * @note
+ * !: I feel like there has to be a better way to do this
+ *
+ * TODO: Think of alternative methods for manual syncs. `stdin` could be useful
+ * in addition to API endpoint, but probably not really needed.
  */
 auto cin_thread() -> void
 {
     // create a pointer to the queue
-    Queue* queue = Queue::getInstance();
+    auto* queue = Queue::getInstance();
 
     while (true)
     {
@@ -46,15 +55,19 @@ auto cin_thread() -> void
     }
 }
 
-// ?: Do we actually want to keep alive or let the connection drop and
-// reconnect when we need to send a message?
 /**
  * @brief thread that sends a message to the log server every 29 minutes to keep
  * the socket from closing
+ *
+ * @deprecated Log server may be going away soon
+ *
+ * @note
+ * ?: Do we actually want to keep alive or let the connection drop and reconnect
+ * when we need to send a message?
  */
 auto keep_alive_thread() -> void
 {
-    mirror::Logger* logger = mirror::Logger::getInstance();
+    auto* logger = mirror::Logger::getInstance();
 
     while (true)
     {
@@ -72,9 +85,9 @@ auto keep_alive_thread() -> void
 auto update_schedule_thread() -> void
 {
     // create a pointer to the schedule
-    Schedule* schedule = Schedule::getInstance();
+    auto* schedule = Schedule::getInstance();
     // create a pointer to the queue
-    Queue*    queue    = Queue::getInstance();
+    auto* queue    = Queue::getInstance();
 
     const auto mirrorsJSONFile
         = std::filesystem::relative("configs/mirrors.json");
@@ -98,7 +111,7 @@ auto update_schedule_thread() -> void
                          "Generating new sync schedule\n";
 
             // retrieve the mirror data from mirrors.json
-            nlohmann::json config = read_JSON_from_file("configs/mirrors.json");
+            auto config = read_JSON_from_file("configs/mirrors.json");
 
             // build the schedule based on the mirrors.json config
             schedule->build(config.at("mirrors"));
@@ -111,3 +124,4 @@ auto update_schedule_thread() -> void
         }
     }
 }
+} // namespace mirror::sync_scheduler

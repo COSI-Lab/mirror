@@ -1,21 +1,21 @@
-#include "queue.hpp"
+#include <mirror/sync_scheduler/queue.hpp>
 
 #include <algorithm>
 #include <chrono>
 #include <cstdlib>
-#include <deque>
 #include <format>
 #include <fstream>
 #include <iostream>
-#include <mutex>
 #include <string>
 #include <thread>
-#include <unordered_map>
 #include <vector>
 
 #include <mirror/logger.hpp>
+
 #include <nlohmann/json.hpp>
 
+namespace mirror::sync_scheduler
+{
 // private constructor for Queue class
 Queue::Queue()
     : m_QueueRunning(false)
@@ -42,7 +42,7 @@ auto Queue::push_back_list(const std::vector<std::string>& name) -> void
 {
     m_ThreadLock.lock();
     // store old queue size for duplicate check later.
-    std::size_t oldQueueSize = m_Queue.size();
+    auto oldQueueSize = m_Queue.size();
 
     // add name list to the queue
     for (std::size_t idx = 0; idx < name.size(); idx++)
@@ -385,13 +385,14 @@ auto Queue::rsync(const nlohmann::json& config, const std::string& options)
     if (!user.empty())
     {
         command = std::format("%s%s@%s::%s %s", command, user, host, src, dest);
-        command = command + user + "@" + host + "::" + src + " " + dest;
+        // command = command + user + "@" + host + "::" + src + " " + dest;
     }
     else
     {
-        std::format("%s%s::%s %s", command, host, src, dest);
-        command = command + host + "::" + src + " " + dest;
+        command = std::format("%s%s::%s %s", command, host, src, dest);
+        // command = command + host + "::" + src + " " + dest;
     }
 
     return command;
 }
+} // namespace mirror::sync_scheduler

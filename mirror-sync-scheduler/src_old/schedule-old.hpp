@@ -7,6 +7,8 @@
 
 #include <nlohmann/json.hpp>
 
+namespace mirror::sync_scheduler
+{
 /**
  * @brief Task structs are used in the build algorithm to represent a project
  */
@@ -41,6 +43,10 @@ struct Job
     double target_time;
 };
 
+/**
+ * @brief
+ *
+ */
 class Schedule
 {
   private:
@@ -78,14 +84,15 @@ class Schedule
      *
      * @return pointer to a vector of strings with the names of the projects to
      * be updated next
+     *
+     * @note
+     * ?: Why is this returning a pointer to a vector?
+     *
+     * TODO: Update the return type of this function so that the
+     * `seconds_to_sleep` are not being passed out through a reference.
+     * `std::pair` could be used but there is likely a deeper issue with the
+     * structure of this function that should be addressed
      */
-    /*
-    ? Why is this returning a pointer to a vector?
-    TODO: Update the return type of this function so that the
-    seconds_to_sleep are not being passed out through a reference.
-    `std::pair` could be used but there is likely a deeper issue with the
-    structure of this function that should be addressed
-    */
     auto nextJob(int& seconds_to_sleep) -> std::vector<std::string>*;
 
   private:
@@ -116,6 +123,8 @@ class Schedule
   private:
     /**
      * @brief used to hold the most recently ran job to speed up nextJob()
+     *
+     * @note
      * ?: Should this be a `std::size_t`?
      * ?: Is `iterator` an accurate name for this variable?
      */
@@ -132,3 +141,4 @@ class Schedule
      */
     mirror::Logger* logger = mirror::Logger::getInstance();
 };
+} // namespace mirror::sync_scheduler
