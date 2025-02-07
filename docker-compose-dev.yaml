@@ -3,18 +3,6 @@
 # https://github.com/COSI-Lab/
 #
 services:
-  # --- Log server ---
-  log-server:
-    build: ./mirrorlog
-    container_name: mirrorlog
-    expose:
-      - 4001
-    volumes:
-      - "./mirrorlog/logs:/mirror/logs"
-      - "./mirrorlog/configs:/mirror/configs:ro"
-    networks:
-      - mirror
-
   # --- Website ---
   website:
     build: ./mirror-website
@@ -50,8 +38,6 @@ services:
       - "./mirror-sync-scheduler/scripts:/mirror/scripts:ro"
     networks:
       - mirror
-    depends_on:
-      - log-server
     stdin_open: true
     tty: true
 
@@ -64,8 +50,6 @@ services:
 #      - "./mirror-torrent-handler/configs:/mirror/configs:ro"
 #    networks:
 #      - mirror
-#    depends_on:
-#      - log-server
 
   # --- Map ---
 #  map:
@@ -80,7 +64,6 @@ services:
 #      - "./mirror-map/configs:/mirror/configs:ro"
 #      - "./mirror-map/GeoLite2City:/mirror/GeoLite2City"
 #    depends_on:
-#      - log-server
 #      - metrics
 
   # --- Metrics engine ---
@@ -96,7 +79,6 @@ services:
     networks:
       - mirror
     depends_on:
-      - log-server
       - website
 
   # --- Prometheus DB ---
