@@ -1,7 +1,4 @@
 import java.io.IOException;
-import java.io.OutputStream;
-import java.net.Socket;
-import java.nio.charset.StandardCharsets;
 import java.text.SimpleDateFormat;
 import java.util.Date;
 
@@ -18,11 +15,7 @@ public class Log {
     private static final String LOG_FATAL = " \u001B[31m[ FATAL ]\u001B[0m ";
 
     private static Log instance = null;
-    private String log_host = "";
-    private int log_port = 0;
     private String component_name = "";
-    Socket socket;
-    OutputStream clientOut;
     boolean configured;
 
     /**
@@ -45,19 +38,8 @@ public class Log {
      * @param log_port Log server port (ex. 4001)
      */
     public synchronized void configure(String log_host, int log_port, String component_name) {
-        try {
-            this.log_host = log_host;
-            this.log_port = log_port;
-            this.component_name = component_name;
-            socket = new Socket(log_host, log_port);
-            clientOut = socket.getOutputStream();
-            configured = true;
-            printToConsole(Levels.INFO, "Logger - Connected to log server.");
-        } catch(IOException e) {
-            configured = false;
-            printToConsole(Levels.ERROR, "Logger - Could not connect to log server.");
-            printToConsole(Levels.WARN, "Logger - Running in offline mode.");
-        }
+        this.component_name = component_name;
+        configured = true;
     }
 
     /**
@@ -70,7 +52,7 @@ public class Log {
      * Debug log events are not sent to the log server.
      * @param message Message to log
      */
-    public void debug(String message) { printToConsole(Levels.DEBUG, message); }
+    public void debug(String message) { print(Levels.DEBUG, message); }
 
     /**
      * Logs an event with severity "INFO".
@@ -102,34 +84,6 @@ public class Log {
      * @param message Message to log
      */
     private synchronized void print(Levels level, String message) {
-        printToConsole(level, message);
-        if(configured) {
-            StringBuilder sb = new StringBuilder();
-            sb.append("@").append(component_name).append("@");
-            sb.append(level.ordinal()).append(message).append("\n");
-            try {
-                clientOut.write(sb.toString().getBytes(StandardCharsets.UTF_8));
-                clientOut.flush();
-            } catch (IOException e) {
-                printToConsole(Levels.INFO, "Logger - Reconnecting to log server...");
-                try {
-                    socket = new Socket(log_host, log_port);
-                    clientOut = socket.getOutputStream();
-                    clientOut.write(sb.toString().getBytes(StandardCharsets.UTF_8));
-                    clientOut.flush();
-                } catch(IOException f) {
-                    printToConsole(Levels.ERROR, "Logger - Could not reconnect to log server.");
-                }
-            }
-        }
-    }
-
-    /**
-     * Prints a log event to the console.
-     * @param level Severity of the log event
-     * @param message Message to log
-     */
-    private void printToConsole(Levels level, String message) {
         StringBuilder sb = new StringBuilder();
         sb.append(LOG_DATE_FORMAT.format(new Date()));
         switch(level.ordinal()) {

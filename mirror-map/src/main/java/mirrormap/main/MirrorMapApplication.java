@@ -22,7 +22,7 @@ public class MirrorMapApplication {
     public static void main(String[] args){
         // Configure logging
         Log log = Log.getInstance();
-        log.configure("mirrorlog", 4001, "Map");
+        log.configure("Map");
 
         try (ZContext context = new ZContext()) {
             // Start GeoIP database updater

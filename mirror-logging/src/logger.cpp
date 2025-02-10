@@ -8,12 +8,7 @@
 #include <iomanip>
 #include <iostream>
 
-// Library includes
-#include <zmq.hpp>
-
 namespace mirror {
-
-    zmq::context_t socketContext(1, 1);
 
     // Static Member Initializations
     Logger *Logger::s_Instance = nullptr;
@@ -62,12 +57,8 @@ namespace mirror {
         printEvent(" \u001B[31m[ FATAL ]\u001B[0m ", logMessage);
     }
 
-    void Logger::configure(uint16_t port, const std::string &componentName, const std::string &address) {
+    void Logger::configure(const std::string &componentName) {
         std::lock_guard<std::mutex> instanceLock(s_AccessMutex);
-
-        m_URL = "tcp://" + address + ":" + std::to_string(port);
-        m_LogServerSocket.connect(m_URL);
-        
 
         m_ComponentName = componentName;
         m_Configured = true;
@@ -76,21 +67,6 @@ namespace mirror {
     /*
      * Start Of Private Functions
      */
-
-    void Logger::f_SendLine(const std::string &lineToSend) {
-        std::lock_guard<std::mutex> instanceGuard(s_AccessMutex);
-
-        // Throws exception if logger is not configured. Should cause the program to end
-        if (!m_Configured)
-            throw std::logic_error("Logger not configured");
-
-        // Routing ID required for sending TCP messages, not part of the packet by default
-        std::string routingID = m_LogServerSocket.get(zmq::sockopt::routing_id);
-        m_LogServerSocket.send(zmq::message_t(routingID), zmq::send_flags::sndmore);
-
-        zmq::message_t message{"@" + m_ComponentName + lineToSend + "\n"};
-        m_LogServerSocket.send(message, zmq::send_flags::none);
-    }
 
     void Logger::printEvent(const char* level_tag, const std::string &message) {
         std::time_t now = std::time(nullptr);

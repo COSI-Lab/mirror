@@ -3,19 +3,6 @@
 # https://github.com/COSI-Lab/
 #
 services:
-  # --- Log server ---
-  log-server:
-    build: ./mirrorlog
-    container_name: mirrorlog
-    restart: unless-stopped
-    expose:
-      - 4001
-    volumes:
-      - "./logs:/mirror/logs"
-      - "./configs:/mirror/configs:ro"
-    networks:
-      - mirror
-
   # --- Website ---
   website:
     build: ./mirror-website
@@ -55,7 +42,6 @@ services:
     networks:
       - mirror
     depends_on:
-      - log-server
       - metrics
   
   # --- Sync scheduler ---
@@ -69,8 +55,6 @@ services:
       - "./scripts:/mirror/scripts:ro"
     networks:
       - mirror
-    depends_on:
-      - log-server
     stdin_open: true
     tty: true
 
@@ -85,7 +69,6 @@ services:
   #   networks:
   #     - mirror
   #   depends_on:
-  #     - log-server
 
   # --- Metrics engine ---
   metrics:
@@ -100,8 +83,6 @@ services:
       - "metrics:/mirror/data"
     networks:
       - mirror
-    depends_on:
-      - log-server
 
   # --- Prometheus DB ---
   prometheus:
