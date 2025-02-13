@@ -23,7 +23,7 @@ class SyncScheduler
     auto run() -> void;
 
   private:
-    static auto load_config() -> nlohmann::json;
+    static auto load_mirrors_config() -> nlohmann::json;
 
   private: // Members
     Schedule m_Schedule;
