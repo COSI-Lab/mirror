@@ -9,6 +9,10 @@
 
 // Standard Library Includes
 #include <format>
+#include <stdexcept>
+#include <string>
+#include <tuple>
+#include <utility>
 #include <vector>
 
 // Third Party Includes
@@ -17,11 +21,13 @@
 namespace mirror::sync_scheduler
 {
 Project::Project(const nlohmann::json& project)
+    : m_Name("UNINITIALIZED"),
+      m_SyncMethod(SyncMethod::UNSET)
 {
     if (project.contains("static"))
     {
         throw static_project_exception(std::format(
-            "Project '{}' uses a static sync. Project not created",
+            "Project '{}' uses a static sync. Project not created!",
             project.value("name", "")
         ));
     }
@@ -32,7 +38,7 @@ Project::Project(const nlohmann::json& project)
     if (!isRsyncOrScript)
     {
         throw std::runtime_error(std::format(
-            "Project '{}' is missing a sync type",
+            "Project '{}' is missing a sync type!",
             project.value("name", "")
         ));
     }
@@ -47,8 +53,18 @@ auto Project::compose_rsync_command(
     const std::string&    optionsKey = "options"
 ) -> std::string
 {
-    std::string command
-        = std::format("/usr/bin/rsync %s", rsyncConfig.value(optionsKey, ""));
+    const auto options = rsyncConfig.value(optionsKey, "");
+
+    if (options.empty())
+    {
+        throw std::runtime_error(std::format(
+            "No Rsync options given for project `{}`; key `{}`",
+            rsyncConfig.value("name", ""),
+            optionsKey
+        ));
+    }
+
+    std::string command = std::format("/usr/bin/rsync %s", options);
 
     const std::string user = rsyncConfig.value("user", "");
     const std::string host = rsyncConfig.value("host", "");
@@ -113,8 +129,8 @@ auto Project::generate_script_config(const nlohmann::json& project)
 
     config.emplace("syncs_per_day", project.at("script").at("syncs_per_day"));
 
-    std::string              command = project.at("script").at("command");
-    std::vector<std::string> arguments
+    std::string                    command = project.at("script").at("command");
+    const std::vector<std::string> arguments
         = project.at("script").value("arguments", std::vector<std::string> {});
 
     for (const std::string& arg : arguments)

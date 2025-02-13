@@ -8,6 +8,11 @@
 #include <mirror/sync_scheduler/Schedule.hpp>
 
 // Standard Library Includes
+#include <cstddef>
+#include <format>
+#include <map>
+#include <numeric>
+#include <ranges>
 #include <stdexcept>
 
 // Third Party Library Includes
@@ -20,18 +25,17 @@
 namespace mirror::sync_scheduler
 {
 Schedule::Schedule(const nlohmann::json& mirrors)
-    : m_Projects()
 {
     if (mirrors.empty())
     {
         throw std::runtime_error("No mirrors found in config!");
     }
 
-    for (const auto& mirror : mirrors)
+    for (const nlohmann::json& mirror : mirrors)
     {
         try
         {
-            m_Projects.emplace_back(Project(mirror));
+            m_Projects.emplace_back(mirror);
         }
         catch (static_project_exception& e)
         {
@@ -40,21 +44,88 @@ Schedule::Schedule(const nlohmann::json& mirrors)
         catch (std::runtime_error& e)
         {
             spdlog::error(e.what());
+            throw e;
         }
     }
 
     build();
 
-    if (!verify())
+    try
     {
-        throw std::runtime_error("Failed to verify sync schedule!");
+        verify();
+    }
+    catch (std::runtime_error& e)
+    {
+        spdlog::error(e.what());
+        throw e;
+    }
+
+    spdlog::info("Successfully verified sync schedule!");
+}
+
+auto Schedule::sync_frequency_lcm() -> std::size_t
+{
+    std::size_t leastCommonMultiple = 1;
+
+    for (const auto& project : m_Projects)
+    {
+        leastCommonMultiple
+            = std::lcm(leastCommonMultiple, project.get_syncs_per_day());
+    }
+
+    return leastCommonMultiple;
+}
+
+auto Schedule::build() -> void
+{
+    auto syncLCM = sync_frequency_lcm();
+    spdlog::trace(std::format("Sync LCM is {}", syncLCM));
+
+    m_SyncIntervals.resize(syncLCM);
+
+    for (auto [idx, interval] : std::ranges::enumerate_view(m_SyncIntervals))
+    {
+        for (const auto [jdx, project] :
+             std::ranges::enumerate_view(m_Projects))
+        {
+            if ((idx + 1) % (syncLCM / project.get_syncs_per_day()) == 0)
+            {
+                interval.emplace(jdx);
+            }
+        }
     }
 }
 
-auto Schedule::build() -> void { }
-
-auto Schedule::verify() -> bool
+auto Schedule::verify() -> void
 {
-    return false;
+    std::map<std::size_t, std::size_t> syncCounts;
+
+    for (const auto& [idx, interval] :
+         std::ranges::enumerate_view(m_SyncIntervals))
+    {
+        for (const auto projectIdx : interval)
+        {
+            if (!syncCounts.contains(projectIdx))
+            {
+                syncCounts.emplace(projectIdx, 0);
+            }
+
+            syncCounts.at(projectIdx)++;
+        }
+    }
+
+    for (const auto [projectIdx, syncCount] : syncCounts)
+    {
+        if (m_Projects.at(projectIdx).get_syncs_per_day() != syncCount)
+        {
+            throw std::runtime_error(std::format(
+                "Failed to verify schedule! Project `{}` was scheduled to sync "
+                "{} times; expected {}",
+                m_Projects.at(projectIdx).get_name(),
+                syncCount,
+                m_Projects.at(projectIdx).get_syncs_per_day()
+            ));
+        }
+    }
 }
 } // namespace mirror::sync_scheduler

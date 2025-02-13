@@ -21,15 +21,23 @@ namespace mirror::sync_scheduler
 
 class Project
 {
-  public:  // Constructors
+  public: // Constructors
     explicit Project(const nlohmann::json& project);
 
-  public:  // Methods
+  public: // Methods
+    auto get_syncs_per_day() const -> std::size_t
+    {
+        return m_SyncConfig.at("syncs_per_day").get<std::size_t>();
+    }
+
+    auto get_name() const -> std::string { return m_Name; }
+
   private: // Enums
     enum class SyncMethod : std::uint8_t
     {
         SCRIPT,
         RSYNC,
+        UNSET,
     };
 
   private: // Methods

@@ -7,7 +7,8 @@
 #pragma once
 
 // Standard Library Includes
-#include <array>
+#include <cstddef>
+#include <set>
 #include <vector>
 
 // Third Party Library Includes
@@ -23,14 +24,13 @@ class Schedule
   public:  // Constructors
     explicit Schedule(const nlohmann::json& mirrors);
 
-  public:  // Methods
-    auto build() -> void;
-
   private: // Methods
-    auto verify() -> bool;
+    auto build() -> void;
+    auto verify() -> void;
+    auto sync_frequency_lcm() -> std::size_t;
 
   private: // Members
-    std::vector<Project>                     m_Projects;
-    std::array<std::vector<std::size_t>, 24> m_HoursToSync;
+    std::vector<Project>               m_Projects;
+    std::vector<std::set<std::size_t>> m_SyncIntervals;
 };
 } // namespace mirror::sync_scheduler
