@@ -8,18 +8,24 @@
 #include <mirror/sync_scheduler/SyncScheduler.hpp>
 
 // Standard Library Includes
+#include <cerrno>
+#include <cstdio>
+#include <format>
 #include <fstream>
 #include <stdexcept>
+// NOLINTNEXTLINE(*-deprecated-headers, llvm-include-order)
+#include <string.h> // Required for `::strerror_r`. Not available in `cstring`
+#include <string>
 
 // Third Party Library Includes
-#include <nlohmann/json.hpp>
+#include <nlohmann/json_fwd.hpp>
 #include <spdlog/spdlog.h>
 
 namespace mirror::sync_scheduler
 {
 SyncScheduler::SyncScheduler()
 try
-    : m_Schedule(load_config().value("mirrors", nlohmann::json {}))
+    : m_Schedule(load_mirrors_config().value("mirrors", nlohmann::json {}))
 {
     spdlog::info("Successfully generated schedule!");
 }
@@ -29,11 +35,22 @@ catch (std::runtime_error& e)
     throw e;
 }
 
-auto SyncScheduler::load_config() -> nlohmann::json
+auto SyncScheduler::load_mirrors_config() -> nlohmann::json
 {
-    std::ifstream configFile("configs/mirrors.json");
+    std::ifstream mirrorsConfigFile("configs/mirrors.json");
 
-    return nlohmann::json::parse(configFile);
+    if (!mirrorsConfigFile.good())
+    {
+        std::string errorMessage;
+        errorMessage.resize(BUFSIZ);
+
+        throw std::runtime_error(std::format(
+            "Failed to load mirrors config! OS Error: {}",
+            ::strerror_r(errno, errorMessage.data(), errorMessage.size())
+        ));
+    }
+
+    return nlohmann::json::parse(mirrorsConfigFile);
 }
 
 auto SyncScheduler::run() -> void { }
