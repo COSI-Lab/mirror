@@ -9,6 +9,5 @@ project(syncScheduler
 
 include(cmake/fetch_deps.cmake)
 
-add_subdirectory(lib/mirror-logging)
 add_subdirectory(src)
 

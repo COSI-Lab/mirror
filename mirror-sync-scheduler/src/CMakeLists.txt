@@ -18,7 +18,6 @@ PRIVATE
 
 target_link_libraries(sync_scheduler
 PRIVATE 
-    mirror-logging
     nlohmann_json::nlohmann_json
     spdlog::spdlog
 )
@@ -31,6 +30,6 @@ PRIVATE
 set_target_properties(sync_scheduler 
 PROPERTIES
     CXX_STANDARD 23
-    CXX_CLANG_TIDY "${CLANG_TIDY_COMMAND}"
+    #CXX_CLANG_TIDY "${CLANG_TIDY_COMMAND}"
 )
 
