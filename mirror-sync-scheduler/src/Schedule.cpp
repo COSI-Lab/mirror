@@ -16,7 +16,7 @@
 #include <stdexcept>
 
 // Third Party Library Includes
-#include <nlohmann/json.hpp>
+#include <nlohmann/json_fwd.hpp>
 #include <spdlog/spdlog.h>
 
 // Project Includes
