@@ -37,14 +37,14 @@ Schedule::Schedule(const nlohmann::json& mirrors)
         {
             m_Projects.emplace_back(mirror);
         }
-        catch (static_project_exception& e)
+        catch (static_project_exception& spe)
         {
-            spdlog::warn(e.what());
+            spdlog::warn(spe.what());
         }
-        catch (std::runtime_error& e)
+        catch (std::runtime_error& re)
         {
-            spdlog::error(e.what());
-            throw e;
+            spdlog::error(re.what());
+            throw re;
         }
     }
 
@@ -54,10 +54,10 @@ Schedule::Schedule(const nlohmann::json& mirrors)
     {
         verify();
     }
-    catch (std::runtime_error& e)
+    catch (std::runtime_error& re)
     {
-        spdlog::error(e.what());
-        throw e;
+        spdlog::error(re.what());
+        throw re;
     }
 
     spdlog::info("Successfully verified sync schedule!");

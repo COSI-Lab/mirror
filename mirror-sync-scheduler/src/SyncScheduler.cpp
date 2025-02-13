@@ -29,10 +29,10 @@ try
 {
     spdlog::info("Successfully generated schedule!");
 }
-catch (std::runtime_error& e)
+catch (std::runtime_error& re)
 {
-    spdlog::error(e.what());
-    throw e;
+    spdlog::error(re.what());
+    throw re;
 }
 
 auto SyncScheduler::load_mirrors_config() -> nlohmann::json
