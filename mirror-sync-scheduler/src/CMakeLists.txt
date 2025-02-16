@@ -7,8 +7,8 @@ PRIVATE
     main.cpp
     SyncScheduler.cpp
     Schedule.cpp
-    ManualSyncListener.cpp
     SyncDetails.cpp
+    ManualSyncListener.cpp
     ${HEADER_LIST}
 )
 
