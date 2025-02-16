@@ -6,11 +6,17 @@
 
 #pragma once
 
+// Standard Library Includes
+#include <map>
+#include <string>
+
 // Third Party Library Includes
 #include <nlohmann/json.hpp>
 
 // Project Includes
+#include <mirror/sync_scheduler/ProjectCatalogue.hpp>
 #include <mirror/sync_scheduler/Schedule.hpp>
+#include <mirror/sync_scheduler/SyncDetails.hpp>
 
 namespace mirror::sync_scheduler
 {
@@ -24,8 +30,10 @@ class SyncScheduler
 
   private:
     static auto load_mirrors_config() -> nlohmann::json;
+    auto generate_project_catalogue(const nlohmann::json& mirrors) -> void;
 
   private: // Members
-    Schedule m_Schedule;
+    Schedule         m_Schedule;
+    ProjectCatalogue m_ProjectCatalogue;
 };
 } // namespace mirror::sync_scheduler

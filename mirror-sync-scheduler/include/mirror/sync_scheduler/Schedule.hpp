@@ -8,6 +8,7 @@
 
 // Standard Library Includes
 #include <cstddef>
+#include <map>
 #include <set>
 #include <vector>
 
@@ -15,22 +16,23 @@
 #include <nlohmann/json.hpp>
 
 // Project Includes
-#include <mirror/sync_scheduler/Project.hpp>
+#include <mirror/sync_scheduler/ProjectCatalogue.hpp>
+#include <mirror/sync_scheduler/SyncDetails.hpp>
 
 namespace mirror::sync_scheduler
 {
 class Schedule
 {
   public:  // Constructors
-    explicit Schedule(const nlohmann::json& mirrors);
+    explicit Schedule(const ProjectCatalogue& projects);
 
   private: // Methods
-    auto build() -> void;
-    auto verify() -> void;
-    auto sync_frequency_lcm() -> std::size_t;
+    auto        build(const ProjectCatalogue& projects) -> void;
+    auto        verify(const ProjectCatalogue& projects) -> void;
+    static auto sync_frequency_lcm(const ProjectCatalogue& projects)
+        -> std::size_t;
 
   private: // Members
-    std::vector<Project>               m_Projects;
-    std::vector<std::set<std::size_t>> m_SyncIntervals;
+    std::vector<std::set<std::string>> m_SyncIntervals;
 };
 } // namespace mirror::sync_scheduler

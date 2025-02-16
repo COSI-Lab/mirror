@@ -14,45 +14,23 @@
 #include <numeric>
 #include <ranges>
 #include <stdexcept>
+#include <string>
 
 // Third Party Library Includes
-#include <nlohmann/json_fwd.hpp>
 #include <spdlog/spdlog.h>
 
 // Project Includes
-#include <mirror/sync_scheduler/Project.hpp>
+#include <mirror/sync_scheduler/ProjectCatalogue.hpp>
 
 namespace mirror::sync_scheduler
 {
-Schedule::Schedule(const nlohmann::json& mirrors)
+Schedule::Schedule(const ProjectCatalogue& projects)
 {
-    if (mirrors.empty())
-    {
-        throw std::runtime_error("No mirrors found in config!");
-    }
-
-    for (const nlohmann::json& mirror : mirrors)
-    {
-        try
-        {
-            m_Projects.emplace_back(mirror);
-        }
-        catch (static_project_exception& spe)
-        {
-            spdlog::warn(spe.what());
-        }
-        catch (std::runtime_error& re)
-        {
-            spdlog::error(re.what());
-            throw re;
-        }
-    }
-
-    build();
+    build(projects);
 
     try
     {
-        verify();
+        verify(projects);
     }
     catch (std::runtime_error& re)
     {
@@ -63,67 +41,69 @@ Schedule::Schedule(const nlohmann::json& mirrors)
     spdlog::info("Successfully verified sync schedule!");
 }
 
-auto Schedule::sync_frequency_lcm() -> std::size_t
+auto Schedule::sync_frequency_lcm(const ProjectCatalogue& projects)
+    -> std::size_t
 {
     std::size_t leastCommonMultiple = 1;
 
-    for (const auto& project : m_Projects)
+    for (const auto& [_, syncDetails] : projects)
     {
         leastCommonMultiple
-            = std::lcm(leastCommonMultiple, project.get_syncs_per_day());
+            = std::lcm(leastCommonMultiple, syncDetails.get_syncs_per_day());
     }
 
     return leastCommonMultiple;
 }
 
-auto Schedule::build() -> void
+auto Schedule::build(const ProjectCatalogue& projects) -> void
 {
-    auto syncLCM = sync_frequency_lcm();
+    auto syncLCM = sync_frequency_lcm(projects);
     spdlog::trace(std::format("Sync LCM is {}", syncLCM));
 
     m_SyncIntervals.resize(syncLCM);
 
     for (auto [idx, interval] : std::ranges::enumerate_view(m_SyncIntervals))
     {
-        for (const auto [jdx, project] :
-             std::ranges::enumerate_view(m_Projects))
+        for (const auto [jdx, project] : std::ranges::enumerate_view(projects))
         {
-            if ((idx + 1) % (syncLCM / project.get_syncs_per_day()) == 0)
+            const auto& [name, syncDetails] = project;
+
+            if ((idx + 1) % (syncLCM / syncDetails.get_syncs_per_day()) == 0)
             {
-                interval.emplace(jdx);
+                interval.emplace(name);
             }
         }
     }
 }
 
-auto Schedule::verify() -> void
+auto Schedule::verify(const ProjectCatalogue& projects) -> void
 {
-    std::map<std::size_t, std::size_t> syncCounts;
+    std::map<std::string, std::size_t> syncCounts;
 
     for (const auto& [idx, interval] :
          std::ranges::enumerate_view(m_SyncIntervals))
     {
-        for (const auto projectIdx : interval)
+        for (const auto& projectName : interval)
         {
-            if (!syncCounts.contains(projectIdx))
+            if (!syncCounts.contains(projectName))
             {
-                syncCounts.emplace(projectIdx, 0);
+                syncCounts.emplace(projectName, 0);
             }
 
-            syncCounts.at(projectIdx)++;
+            syncCounts.at(projectName)++;
         }
     }
 
-    for (const auto [projectIdx, syncCount] : syncCounts)
+    for (const auto& [projectName, syncCount] : syncCounts)
     {
-        if (m_Projects.at(projectIdx).get_syncs_per_day() != syncCount)
+        if (projects.at(projectName).get_syncs_per_day() != syncCount)
         {
             throw std::runtime_error(std::format(
                 "Failed to verify schedule! Project `{}` was scheduled to sync "
                 "{} times; expected {}",
-                m_Projects.at(projectIdx).get_name(),
+                projectName,
                 syncCount,
-                m_Projects.at(projectIdx).get_syncs_per_day()
+                projects.at(projectName).get_syncs_per_day()
             ));
         }
     }
