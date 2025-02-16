@@ -10,6 +10,8 @@ PRIVATE
     Project.cpp
     ManualSyncListener.cpp
     SyncDetails.cpp
+    Project.cpp
+    ManualSyncListener.cpp
     ${HEADER_LIST}
 )
 
