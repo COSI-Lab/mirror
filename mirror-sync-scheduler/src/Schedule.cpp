@@ -64,10 +64,8 @@ auto Schedule::build(const ProjectCatalogue& projects) -> void
 
     for (auto [idx, interval] : std::ranges::enumerate_view(m_SyncIntervals))
     {
-        for (const auto [jdx, project] : std::ranges::enumerate_view(projects))
+        for (const auto& [name, syncDetails] : projects)
         {
-            const auto& [name, syncDetails] = project;
-
             if ((idx + 1) % (syncLCM / syncDetails.get_syncs_per_day()) == 0)
             {
                 interval.emplace(name);

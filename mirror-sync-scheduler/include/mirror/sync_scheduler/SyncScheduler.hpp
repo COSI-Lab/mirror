@@ -34,7 +34,7 @@ class SyncScheduler
         -> ProjectCatalogue;
 
   private: // Members
-    Schedule         m_Schedule;
     ProjectCatalogue m_ProjectCatalogue;
+    Schedule         m_Schedule;
 };
 } // namespace mirror::sync_scheduler
