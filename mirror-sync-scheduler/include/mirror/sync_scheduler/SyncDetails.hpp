@@ -1,5 +1,5 @@
 /**
- * @file Project.hpp
+ * @file SyncDetails.hpp
  * @author Cary Keesler
  * @brief
  */
@@ -7,6 +7,7 @@
 #pragma once
 
 // Standard Library Includes
+#include <cstddef>
 #include <cstdint>
 #include <stdexcept>
 #include <string>
@@ -18,19 +19,17 @@
 
 namespace mirror::sync_scheduler
 {
-
-class Project
+class SyncDetails
 {
   public: // Constructors
-    explicit Project(const nlohmann::json& project);
+    explicit SyncDetails(const nlohmann::json& project);
 
   public: // Methods
+    [[nodiscard]]
     auto get_syncs_per_day() const -> std::size_t
     {
         return m_SyncConfig.at("syncs_per_day").get<std::size_t>();
     }
-
-    auto get_name() const -> std::string { return m_Name; }
 
   private: // Enums
     enum class SyncMethod : std::uint8_t
@@ -56,7 +55,6 @@ class Project
         -> std::pair<SyncMethod, nlohmann::json>;
 
   private: // Members
-    std::string    m_Name;
     SyncMethod     m_SyncMethod;
     nlohmann::json m_SyncConfig;
 };

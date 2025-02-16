@@ -1,11 +1,11 @@
 /**
- * @file Project.cpp
+ * @file SyncDetails.cpp
  * @author Cary Keesler
  * @brief
  */
 
 // Header Being Defined
-#include <mirror/sync_scheduler/Project.hpp>
+#include <mirror/sync_scheduler/SyncDetails.hpp>
 
 // Standard Library Includes
 #include <format>
@@ -20,9 +20,8 @@
 
 namespace mirror::sync_scheduler
 {
-Project::Project(const nlohmann::json& project)
-    : m_Name("UNINITIALIZED"),
-      m_SyncMethod(SyncMethod::UNSET)
+SyncDetails::SyncDetails(const nlohmann::json& project)
+    : m_SyncMethod(SyncMethod::UNSET)
 {
     if (project.contains("static"))
     {
@@ -43,12 +42,10 @@ Project::Project(const nlohmann::json& project)
         ));
     }
 
-    m_Name = project.value("name", "");
-
     std::tie(m_SyncMethod, m_SyncConfig) = generate_sync_config(project);
 }
 
-auto Project::compose_rsync_command(
+auto SyncDetails::compose_rsync_command(
     const nlohmann::json& rsyncConfig,
     const std::string&    optionsKey = "options"
 ) -> std::string
@@ -84,15 +81,15 @@ auto Project::compose_rsync_command(
     return command;
 }
 
-auto Project::generate_sync_config(const nlohmann::json& project)
-    -> std::pair<Project::SyncMethod, nlohmann::json>
+auto SyncDetails::generate_sync_config(const nlohmann::json& project)
+    -> std::pair<SyncDetails::SyncMethod, nlohmann::json>
 {
     return project.contains("rsync") ? generate_rsync_config(project)
                                      : generate_script_config(project);
 }
 
-auto Project::generate_rsync_config(const nlohmann::json& project)
-    -> std::pair<Project::SyncMethod, nlohmann::json>
+auto SyncDetails::generate_rsync_config(const nlohmann::json& project)
+    -> std::pair<SyncDetails::SyncMethod, nlohmann::json>
 {
     nlohmann::json config;
 
@@ -119,11 +116,11 @@ auto Project::generate_rsync_config(const nlohmann::json& project)
         config.emplace("password_file", project.at("password_file"));
     }
 
-    return std::make_pair(Project::SyncMethod::RSYNC, config);
+    return std::make_pair(SyncDetails::SyncMethod::RSYNC, config);
 }
 
-auto Project::generate_script_config(const nlohmann::json& project)
-    -> std::pair<Project::SyncMethod, nlohmann::json>
+auto SyncDetails::generate_script_config(const nlohmann::json& project)
+    -> std::pair<SyncDetails::SyncMethod, nlohmann::json>
 {
     nlohmann::json config;
 
@@ -140,6 +137,6 @@ auto Project::generate_script_config(const nlohmann::json& project)
 
     config.emplace("command", command);
 
-    return std::make_pair(Project::SyncMethod::SCRIPT, config);
+    return std::make_pair(SyncDetails::SyncMethod::SCRIPT, config);
 }
 } // namespace mirror::sync_scheduler
