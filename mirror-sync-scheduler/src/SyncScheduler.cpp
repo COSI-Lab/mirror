@@ -16,23 +16,33 @@
 // NOLINTNEXTLINE(*-deprecated-headers, llvm-include-order)
 #include <string.h> // Required for `::strerror_r`. Not available in `cstring`
 #include <string>
+#include <utility>
 
 // Third Party Library Includes
 #include <nlohmann/json_fwd.hpp>
 #include <spdlog/spdlog.h>
 
+// Project Includes
+#include <mirror/sync_scheduler/SyncDetails.hpp>
+
 namespace mirror::sync_scheduler
 {
 SyncScheduler::SyncScheduler()
-try
-    : m_Schedule(load_mirrors_config().value("mirrors", nlohmann::json {}))
 {
+    try
+    {
+        generate_project_catalogue(
+            load_mirrors_config().value("mirrors", nlohmann::json {})
+        );
+        m_Schedule = Schedule(m_ProjectCatalogue);
+    }
+    catch (std::runtime_error& re)
+    {
+        spdlog::error(re.what());
+        throw re;
+    }
+
     spdlog::info("Successfully generated schedule!");
-}
-catch (std::runtime_error& re)
-{
-    spdlog::error(re.what());
-    throw re;
 }
 
 auto SyncScheduler::load_mirrors_config() -> nlohmann::json
@@ -53,5 +63,36 @@ auto SyncScheduler::load_mirrors_config() -> nlohmann::json
     return nlohmann::json::parse(mirrorsConfigFile);
 }
 
-auto SyncScheduler::run() -> void { }
+auto SyncScheduler::generate_project_catalogue(const nlohmann::json& mirrors)
+    -> void
+{
+    if (mirrors.empty())
+    {
+        throw std::runtime_error("No mirrors found in config!");
+    }
+
+    for (const auto& mirror : mirrors)
+    {
+        try
+        {
+            const auto [_, successful] = m_ProjectCatalogue.emplace(
+                std::make_pair(mirror.at("name"), SyncDetails(mirror))
+            );
+        }
+        catch (static_project_exception& spe)
+        {
+            spdlog::warn(spe.what());
+        }
+        catch (std::runtime_error& re)
+        {
+            spdlog::error(re.what());
+            throw re;
+        }
+    }
+}
+
+auto SyncScheduler::run() -> void
+{
+    // Actually do the thing
+}
 } // namespace mirror::sync_scheduler
