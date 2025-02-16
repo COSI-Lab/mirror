@@ -23,26 +23,24 @@
 #include <spdlog/spdlog.h>
 
 // Project Includes
+#include <mirror/sync_scheduler/ProjectCatalogue.hpp>
 #include <mirror/sync_scheduler/SyncDetails.hpp>
 
 namespace mirror::sync_scheduler
 {
 SyncScheduler::SyncScheduler()
+try
+    : m_ProjectCatalogue(generate_project_catalogue(
+          load_mirrors_config().value("mirrors", nlohmann::json {})
+      )),
+      m_Schedule(m_ProjectCatalogue)
 {
-    try
-    {
-        generate_project_catalogue(
-            load_mirrors_config().value("mirrors", nlohmann::json {})
-        );
-        m_Schedule = Schedule(m_ProjectCatalogue);
-    }
-    catch (std::runtime_error& re)
-    {
-        spdlog::error(re.what());
-        throw re;
-    }
-
-    spdlog::info("Successfully generated schedule!");
+    spdlog ::info("Successfully generated schedule!");
+}
+catch (std::runtime_error& re)
+{
+    spdlog::error(re.what());
+    throw re;
 }
 
 auto SyncScheduler::load_mirrors_config() -> nlohmann::json
@@ -64,8 +62,10 @@ auto SyncScheduler::load_mirrors_config() -> nlohmann::json
 }
 
 auto SyncScheduler::generate_project_catalogue(const nlohmann::json& mirrors)
-    -> void
+    -> ProjectCatalogue
 {
+    ProjectCatalogue catalogue;
+
     if (mirrors.empty())
     {
         throw std::runtime_error("No mirrors found in config!");
@@ -75,7 +75,7 @@ auto SyncScheduler::generate_project_catalogue(const nlohmann::json& mirrors)
     {
         try
         {
-            const auto [_, successful] = m_ProjectCatalogue.emplace(
+            const auto [_, successful] = catalogue.emplace(
                 std::make_pair(mirror.at("name"), SyncDetails(mirror))
             );
         }
@@ -89,6 +89,8 @@ auto SyncScheduler::generate_project_catalogue(const nlohmann::json& mirrors)
             throw re;
         }
     }
+
+    return catalogue;
 }
 
 auto SyncScheduler::run() -> void
