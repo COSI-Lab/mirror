@@ -30,7 +30,8 @@ class SyncScheduler
 
   private:
     static auto load_mirrors_config() -> nlohmann::json;
-    auto generate_project_catalogue(const nlohmann::json& mirrors) -> void;
+    static auto generate_project_catalogue(const nlohmann::json& mirrors)
+        -> ProjectCatalogue;
 
   private: // Members
     Schedule         m_Schedule;
