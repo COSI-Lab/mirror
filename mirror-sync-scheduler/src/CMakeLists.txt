@@ -9,6 +9,7 @@ PRIVATE
     Schedule.cpp
     Project.cpp
     ManualSyncListener.cpp
+    SyncDetails.cpp
     ${HEADER_LIST}
 )
 
@@ -32,6 +33,6 @@ PRIVATE
 set_target_properties(sync_scheduler 
 PROPERTIES
     CXX_STANDARD 23
-    #CXX_CLANG_TIDY "${CLANG_TIDY_COMMAND}"
+    CXX_CLANG_TIDY "${CLANG_TIDY_COMMAND}"
 )
 
