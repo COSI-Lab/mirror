@@ -9,6 +9,7 @@ PRIVATE
     Schedule.cpp
     SyncDetails.cpp
     ManualSyncListener.cpp
+    SyncDetails.cpp
     ${HEADER_LIST}
 )
 
