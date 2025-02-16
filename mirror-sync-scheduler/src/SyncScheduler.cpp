@@ -35,7 +35,7 @@ try
       )),
       m_Schedule(m_ProjectCatalogue)
 {
-    spdlog ::info("Successfully generated schedule!");
+    spdlog::info("Successfully generated schedule!");
 }
 catch (std::runtime_error& re)
 {
@@ -75,9 +75,10 @@ auto SyncScheduler::generate_project_catalogue(const nlohmann::json& mirrors)
     {
         try
         {
-            const auto [_, successful] = catalogue.emplace(
+            catalogue.emplace(
                 std::make_pair(mirror.at("name"), SyncDetails(mirror))
             );
+            spdlog::trace("Catalogued project {}", mirror.value("name", ""));
         }
         catch (static_project_exception& spe)
         {
