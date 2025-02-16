@@ -62,6 +62,8 @@ services:
   sync-scheduler:
     build: ./mirror-sync-scheduler
     container_name: mirror-sync-scheduler
+    expose:
+      - 9281
     restart: unless-stopped
     volumes:
       - "/storage:/storage"
