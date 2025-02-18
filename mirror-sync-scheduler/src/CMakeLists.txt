@@ -8,7 +8,6 @@ PRIVATE
     SyncScheduler.cpp
     Schedule.cpp
     SyncDetails.cpp
-    ManualSyncListener.cpp
     JobManager.cpp
     ${HEADER_LIST}
 )

@@ -13,7 +13,6 @@
 
 // Project Includes
 #include <mirror/sync_scheduler/SyncScheduler.hpp>
-#include <mirror/sync_scheduler/ManualSyncListener.hpp>
 
 auto main() -> int
 {

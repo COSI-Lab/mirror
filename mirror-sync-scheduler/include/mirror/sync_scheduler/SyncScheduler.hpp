@@ -44,5 +44,6 @@ class SyncScheduler
     Schedule         m_Schedule;
     JobManager       m_JobManager;
     bool             m_DryRun;
+    std::jthread     m_ManualSyncThread;
 };
 } // namespace mirror::sync_scheduler
