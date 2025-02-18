@@ -44,6 +44,8 @@ services:
   sync-scheduler:
     build: ./mirror-sync-scheduler
     container_name: mirror-sync-scheduler
+    expose:
+      - 9281
     volumes:
       - "./mirror-sync-scheduler/storage:/storage"
       - "./mirror-sync-scheduler/configs:/mirror/configs:ro"

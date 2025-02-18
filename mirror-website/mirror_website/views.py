@@ -14,6 +14,7 @@ from django.views.decorators.http import require_GET, require_http_methods
 from .utils import getMirrorsJson, getSyncTokensJson
 
 import logging
+import zmq
 
 _logger = logging.getLogger("mirror-website")
 
@@ -82,6 +83,12 @@ def sync(request: HttpRequest, project: str):
         return HttpResponseForbidden("Forbidden")
     _logger.info("Manual sync requested for project %s", project)
 
-    # TODO implement manual sync
-
-    return HttpResponse("OK")
+    context = zmq.Context()
+    socket = context.socket(zmq.REP)
+    socket.connect("tcp://sync-scheduler:9281")
+    socket.send(project)
+    reply = socket.recv()
+    if reply == project:
+        return HttpResponse("OK")
+    else:
+        return HttpResponseBadRequest("Bad Request")

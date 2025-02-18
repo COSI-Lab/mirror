@@ -19,4 +19,6 @@ RUN apt install -y libzmq3-dev rsync
 WORKDIR /mirror
 COPY --from=builder /mirror/build/syncScheduler .
 RUN chmod 744 syncScheduler
+# Port for listening for manual syncs
+EXPOSE 9281
 ENTRYPOINT ["./syncScheduler"]

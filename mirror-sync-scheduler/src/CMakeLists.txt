@@ -8,6 +8,7 @@ PRIVATE
     SyncScheduler.cpp
     Schedule.cpp
     SyncDetails.cpp
+    ManualSyncListener.cpp
     JobManager.cpp
     ${HEADER_LIST}
 )
@@ -21,6 +22,7 @@ target_link_libraries(sync_scheduler
 PRIVATE 
     nlohmann_json::nlohmann_json
     spdlog::spdlog
+    zmq
 )
 
 target_compile_features(sync_scheduler
