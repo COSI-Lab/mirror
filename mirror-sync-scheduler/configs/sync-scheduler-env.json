@@ -1,6 +1,0 @@
-{
-    "dryrun" : true,
-    "queueThreads" : 8,
-    "logServerPort": 4001,
-    "logServerHost": "localhost"
-}
