@@ -1,0 +1,60 @@
+/**
+ * @file JobManager.hpp
+ * @author Cary Keesler
+ * @brief
+ */
+
+#pragma once
+
+// System Includes
+#include <sys/types.h>
+
+// Standard Library Includes
+#include <chrono>
+#include <condition_variable>
+#include <filesystem>
+#include <map>
+#include <mutex>
+#include <string>
+#include <thread>
+#include <vector>
+
+// Project Includes
+#include <mirror/sync_scheduler/SyncJob.hpp>
+
+namespace mirror::sync_scheduler
+{
+class JobManager
+{
+  public: // Constructors
+    JobManager();
+    ~JobManager();
+
+  public: // Methods
+    auto is_job_running(const std::string& jobName) -> bool
+    {
+        return m_ActiveJobs.contains(jobName);
+    }
+
+    auto start_job(
+        const std::string&           jobName,
+        std::string                  command,
+        const std::filesystem::path& passwordFile
+    ) -> bool;
+
+  private:
+    auto register_job(const std::string& jobName, const ::pid_t processID)
+        -> void;
+    auto kill_job(const std::string& jobName) -> void;
+    auto kill_all_jobs() -> void;
+    auto reap_processes() -> std::vector<std::string>;
+    auto deregister_jobs(const std::vector<std::string>& completedJobs) -> void;
+
+  private: // Members
+    std::map<std::string, SyncJob> m_ActiveJobs;
+    std::jthread                   m_ProcessReaper;
+    std::condition_variable        m_SleepVariable;
+    std::mutex                     m_JobMutex;
+    std::mutex                     m_ReaperMutex;
+};
+} // namespace mirror::sync_scheduler

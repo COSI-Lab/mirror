@@ -19,6 +19,13 @@
 
 namespace mirror::sync_scheduler
 {
+enum class SyncMethod : std::uint8_t
+{
+    SCRIPT,
+    RSYNC,
+    UNSET,
+};
+
 class SyncDetails
 {
   public: // Constructors
@@ -31,26 +38,40 @@ class SyncDetails
         return m_SyncConfig.at("syncs_per_day").get<std::size_t>();
     }
 
-  private: // Enums
-    enum class SyncMethod : std::uint8_t
+    [[nodiscard]]
+    auto get_sync_method() const -> SyncMethod
     {
-        SCRIPT,
-        RSYNC,
-        UNSET,
-    };
+        return m_SyncMethod;
+    }
+
+    [[nodiscard]]
+    auto get_password_file() const -> nlohmann::json
+    {
+        return m_SyncConfig.value("password_file", "");
+    }
+
+    [[nodiscard]]
+    auto get_sync_config() const -> nlohmann::json
+    {
+        return m_SyncConfig;
+    }
 
   private: // Methods
+    [[nodiscard]]
     static auto compose_rsync_command(
         const nlohmann::json& rsyncConfig,
         const std::string&    optionsKey
     ) -> std::string;
 
+    [[nodiscard]]
     static auto generate_sync_config(const nlohmann::json& project)
         -> std::pair<SyncMethod, nlohmann::json>;
 
+    [[nodiscard]]
     static auto generate_rsync_config(const nlohmann::json& project)
         -> std::pair<SyncMethod, nlohmann::json>;
 
+    [[nodiscard]]
     static auto generate_script_config(const nlohmann::json& project)
         -> std::pair<SyncMethod, nlohmann::json>;
 

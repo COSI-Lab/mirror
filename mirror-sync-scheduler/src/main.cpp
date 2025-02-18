@@ -4,8 +4,12 @@
  * @brief
  */
 
+// Standard Library Includes
+#include <exception>
+
 // Third Party Includes
 #include <spdlog/cfg/env.h>
+#include <spdlog/spdlog.h>
 
 // Project Includes
 #include <mirror/sync_scheduler/SyncScheduler.hpp>
@@ -15,9 +19,14 @@ auto main() -> int
 {
     spdlog::cfg::load_env_levels();
 
-    mirror::sync_scheduler::SyncScheduler syncScheduler {};
-
-    syncScheduler.run();
-
-    return 0;
+    try
+    {
+        mirror::sync_scheduler::SyncScheduler syncScheduler {};
+        syncScheduler.run();
+    }
+    catch (std::exception& e)
+    {
+        spdlog::error("{}", e.what());
+        return 0;
+    }
 }

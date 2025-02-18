@@ -82,14 +82,14 @@ auto SyncDetails::compose_rsync_command(
 }
 
 auto SyncDetails::generate_sync_config(const nlohmann::json& project)
-    -> std::pair<SyncDetails::SyncMethod, nlohmann::json>
+    -> std::pair<SyncMethod, nlohmann::json>
 {
     return project.contains("rsync") ? generate_rsync_config(project)
                                      : generate_script_config(project);
 }
 
 auto SyncDetails::generate_rsync_config(const nlohmann::json& project)
-    -> std::pair<SyncDetails::SyncMethod, nlohmann::json>
+    -> std::pair<SyncMethod, nlohmann::json>
 {
     nlohmann::json config;
 
@@ -116,11 +116,11 @@ auto SyncDetails::generate_rsync_config(const nlohmann::json& project)
         config.emplace("password_file", project.at("password_file"));
     }
 
-    return std::make_pair(SyncDetails::SyncMethod::RSYNC, config);
+    return std::make_pair(SyncMethod::RSYNC, config);
 }
 
 auto SyncDetails::generate_script_config(const nlohmann::json& project)
-    -> std::pair<SyncDetails::SyncMethod, nlohmann::json>
+    -> std::pair<SyncMethod, nlohmann::json>
 {
     nlohmann::json config;
 
@@ -137,6 +137,6 @@ auto SyncDetails::generate_script_config(const nlohmann::json& project)
 
     config.emplace("command", command);
 
-    return std::make_pair(SyncDetails::SyncMethod::SCRIPT, config);
+    return std::make_pair(SyncMethod::SCRIPT, config);
 }
 } // namespace mirror::sync_scheduler
