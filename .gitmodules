@@ -4,6 +4,3 @@
 [submodule "scripts/archvsync"]
 	path = scripts/archvsync
 	url = https://github.com/COSI-Lab/archvsync.git
-[submodule "scripts/raspbian-tools"]
-	path = scripts/raspbian-tools
-	url = https://github.com/plugwash/raspbian-tools.git

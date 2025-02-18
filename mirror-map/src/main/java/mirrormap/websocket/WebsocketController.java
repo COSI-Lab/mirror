@@ -1,7 +1,9 @@
 package mirrormap.websocket;
 
 import mirrormap.io.WebsocketFrame;
+import mirrormap.log.Log;
 
+import java.io.IOException;
 import java.util.Vector;
 
 /**
@@ -14,12 +16,14 @@ import java.util.Vector;
 public class WebsocketController {
     private final Vector<WebsocketServerThread> connections;
     private static WebsocketController instance = null;
+    private final Log log;
 
     /**
      * Private constructor for WebsocketController.
      */
     private WebsocketController() {
         connections = new Vector<>();
+        log = Log.getInstance();
     }
 
     /**
@@ -33,25 +37,27 @@ public class WebsocketController {
 
     /**
      * Broadcasts a WebsocketFrame to every currently connected client.
+     * If a client has disconnected, it will be removed from the list of active connections.
      * @param f WebsocketFrame to broadcast
      */
     public synchronized void broadcast(WebsocketFrame f) {
-        for(WebsocketServerThread i : connections) {
-            i.sendFrame(f);
+        for(int i = 0; i < connections.size(); i++) {
+            if(!connections.get(i).active) {
+                connections.remove(i);
+                i--;
+            } else {
+                try {
+                    connections.get(i).sendFrame(f);
+                } catch(IOException ignored) {
+                    log.warn("Failed to broadcast frame.");
+                }
+            }
         }
     }
 
     /**
      * Registers a WebsocketServerThread with this WebsocketController.
-     * It is the responsibility of each WebsocketServerThread to deregister itself
-     * if an error occurs or the client closes the connection.
      * @param session WebsocketServerThread instance to register (usually "this")
      */
     public void register(WebsocketServerThread session) { connections.add(session); }
-
-    /**
-     * Deregisters a WebsocketServerThread from this WebsocketController.
-     * @param session WebsocketServerThread instance to deregister (usually "this")
-     */
-    public void deregister(WebsocketServerThread session) { connections.remove(session); }
 }

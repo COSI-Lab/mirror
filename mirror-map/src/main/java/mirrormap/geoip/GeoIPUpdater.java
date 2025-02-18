@@ -35,7 +35,7 @@ public class GeoIPUpdater implements Runnable {
     public GeoIPUpdater() throws IOException, ParseException {
         log = Log.getInstance();
         JsonObject env = JsonObject.from(
-                Files.readString(Path.of("configs/mirror-map-env.json"))
+                Files.readString(Path.of("configs/mirror-map.json"))
         );
         DATABASE_URL = ((JsonString) env.get("database_url")).value();
         CHECKSUM_URL = ((JsonString) env.get("checksum_url")).value();
@@ -50,14 +50,9 @@ public class GeoIPUpdater implements Runnable {
     public void run(){
         //get a pointer to the maxmind handler object
         GeoIPDatabase maxmind = GeoIPDatabase.getInstance();
+        // Configure database for the first time
+        maxmind.configure();
         while(true){
-            log.info("Updating GeoIP database...");
-            //download the database
-            downloadDatabase();
-            //configure the database handler for the database file
-            maxmind.configure();
-            log.info("Done updating GeoIP database.");
-
             try{
                 //TODO: Change to sleep till 1am (or midnight)
                 //sleep for 1 day
@@ -66,6 +61,14 @@ public class GeoIPUpdater implements Runnable {
             catch(InterruptedException e){
                 break;
             }
+            log.info("Updating GeoIP database...");
+            //download the database
+            downloadDatabase();
+            //configure the database handler for the database file
+            maxmind.configure();
+            log.info("Done updating GeoIP database.");
+
+
         }
     }
 
@@ -120,7 +123,7 @@ public class GeoIPUpdater implements Runnable {
         }
         catch(IOException | GeneralSecurityException e){
             log.error("Failed to update GeoIP database.");
-            e.printStackTrace();
+            log.debug(e.toString());
         }
     }
 

@@ -19,6 +19,7 @@ public class WebsocketServerThread extends Thread {
     private final Log log;
     private InputStream in;
     private OutputStream out;
+    public boolean active;
 
     /**
      * Constructs a WebsocketServerThread.
@@ -27,6 +28,7 @@ public class WebsocketServerThread extends Thread {
     public WebsocketServerThread(Socket socket) {
         this.socket = socket;
         log = Log.getInstance();
+        active = true;
     }
 
     @Override
@@ -61,36 +63,35 @@ public class WebsocketServerThread extends Thread {
                     WebsocketFrame pong = new WebsocketFrame((byte) 0xA, ping.getPayload());
                     sendFrame(pong);
                 } catch(IOException e) {
-                    log.debug("IOException listening for ping on websocket.");
+                    log.debug("IOException on websocket.");
                     e.printStackTrace(System.err);
                     break;
                 }
             }
-
-            WebsocketController.getInstance().deregister(this);
 
             log.info("Closing websocket connection...");
 
             socket.close();
 
             log.info("Closed websocket connection.");
+            active = false;
 
         } catch(ParseException e) {
-            WebsocketController.getInstance().deregister(this);
             log.error("ParseException on HTTP request from " + socket.getInetAddress().toString());
+            active = false;
         } catch(NoSuchAlgorithmException e) {
-            WebsocketController.getInstance().deregister(this);
             log.error("WebsocketServerThread threw a NoSuchAlgorithmException. This should not happen!");
+            active = false;
         } catch(IOException e) {
-            WebsocketController.getInstance().deregister(this);
             log.error("IOException communicating with" + socket.getInetAddress().toString());
+            active = false;
         }
     }
 
     @Override
     public void interrupt() {
         log.info("Closing session...");
-        WebsocketController.getInstance().deregister(this);
+        active = false;
         try {
             socket.close();
         } catch(IOException e) {
@@ -102,12 +103,8 @@ public class WebsocketServerThread extends Thread {
      * Sends a frame to the client this WebsocketServerThread is connected to.
      * @param f Frame to send to the client
      */
-    public synchronized void sendFrame(WebsocketFrame f) {
-        try {
-            out.write(f.toBytes());
-        } catch(IOException e) {
-            log.warn("Failed to send frame on websocket.");
-        }
+    public synchronized void sendFrame(WebsocketFrame f) throws IOException {
+        out.write(f.toBytes());
     }
 
     /**

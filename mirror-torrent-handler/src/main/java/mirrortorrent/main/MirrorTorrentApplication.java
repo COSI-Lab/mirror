@@ -20,7 +20,7 @@ import mirrortorrent.torrents.SyncTorrents;
 public class MirrorTorrentApplication {
 
     public static void main(String[] args) {
-        final String envFilePath = "configs/torrent-handler-env.json";
+        final String envFilePath = "configs/torrent-handler.json";
         String torrentFolder = "";
         String downloadFolder = "";
         String logServerHost = "";

@@ -42,11 +42,11 @@ public class WebsocketServer extends Thread {
                     log.error("Server socket forcibly closed.");
                     return;
                 }
-                e.printStackTrace();
+                log.debug(e.toString());
                 return;
             } catch(RejectedExecutionException e) {
                 log.error("Failed to assign websocket session to thread pool.");
-                e.printStackTrace();
+                log.debug(e.toString());
             }
         }
     }
@@ -59,7 +59,7 @@ public class WebsocketServer extends Thread {
             log.info("Closed server socket.");
         } catch(IOException e) {
             log.error("Failed to close server socket.");
-            e.printStackTrace();
+            log.debug(e.toString());
         }
     }
 }

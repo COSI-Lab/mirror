@@ -1,9 +1,10 @@
 FROM eclipse-temurin:21 as builder
-RUN apt update && apt upgrade -y && apt install -y maven
+RUN apt update && apt install -y maven
 WORKDIR /mirror
-COPY ./src /mirror/src
 COPY ./pom.xml /mirror/pom.xml
-RUN mvn clean package
+RUN mvn verify --fail-never
+COPY ./src /mirror/src
+RUN mvn package -DskipTests
 
 FROM eclipse-temurin:21
 EXPOSE 4001

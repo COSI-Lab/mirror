@@ -1,14 +1,15 @@
 # Build
 FROM eclipse-temurin:21 as builder
-RUN apt update && apt upgrade -y && apt install -y maven
+RUN apt update && apt install -y maven
 WORKDIR /mirror
-COPY ./src /mirror/src
 COPY ./pom.xml /mirror/pom.xml
-RUN mvn clean package
+RUN mvn verify --fail-never
+COPY ./src /mirror/src
+RUN mvn package -DskipTests
 
 # Run
 FROM eclipse-temurin:21
 EXPOSE 8080
 WORKDIR /mirror
-COPY --from=builder /mirror/target/mirror-map-0.0.1-jar-with-dependencies.jar ./mirror-map.jar
+COPY --from=builder /mirror/target/mirror-map-*-jar-with-dependencies.jar ./mirror-map.jar
 ENTRYPOINT [ "java", "-jar", "./mirror-map.jar" ]

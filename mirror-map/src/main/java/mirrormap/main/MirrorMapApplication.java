@@ -70,10 +70,10 @@ public class MirrorMapApplication {
             }
         } catch(IOException e) {
             log.fatal("IOException while initializing map backend.");
-            e.printStackTrace();
+            log.debug(e.toString());
         } catch(ParseException e) {
             log.fatal("ParseException while initializing map backend.");
-            e.printStackTrace();
+            log.debug(e.toString());
         }
     }
 }
