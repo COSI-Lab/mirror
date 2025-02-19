@@ -21,7 +21,7 @@ target_link_libraries(sync_scheduler
 PRIVATE 
     nlohmann_json::nlohmann_json
     spdlog::spdlog
-    zmq
+    cppzmq
 )
 
 target_compile_features(sync_scheduler
