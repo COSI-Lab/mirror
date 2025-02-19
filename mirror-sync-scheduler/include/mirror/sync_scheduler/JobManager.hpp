@@ -31,7 +31,7 @@ class JobManager
     ~JobManager();
 
   public: // Methods
-    auto is_job_running(const std::string& jobName) -> bool
+    auto job_is_running(const std::string& jobName) -> bool
     {
         return m_ActiveJobs.contains(jobName);
     }
