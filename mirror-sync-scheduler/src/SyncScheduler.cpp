@@ -129,6 +129,15 @@ auto SyncScheduler::start_sync(const std::string& projectName) -> bool
         return true;
     }
 
+    if (m_JobManager.job_is_running(projectName))
+    {
+        spdlog::warn(
+            "Sync for {} already running, not starting a new sync",
+            projectName
+        );
+        return false;
+    }
+
     spdlog::info("Attempting sync for {}", projectName);
 
     const auto& syncDetails     = m_ProjectCatalogue.at(projectName);
