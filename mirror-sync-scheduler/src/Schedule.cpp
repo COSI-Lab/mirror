@@ -46,7 +46,7 @@ Schedule::Schedule(const ProjectCatalogue& projects)
 
 auto Schedule::determine_sync_lcm(const ProjectCatalogue& projects) -> void
 {
-    for (const auto& [_, syncDetails] : projects)
+    for ([[maybe_unused]] const auto& [projectName, syncDetails] : projects)
     {
         m_SyncLCM = std::lcm(m_SyncLCM, syncDetails.get_syncs_per_day());
     }
@@ -128,7 +128,8 @@ auto Schedule::get_next_sync_batch() -> std::pair<
         "midnight: {}",
         std::chrono::duration_cast<std::chrono::seconds>(now - midnight).count()
     );
-    for (const auto [idx, _] : m_SyncIntervals | std::views::enumerate)
+    for ([[maybe_unused]] const auto [idx, interval] :
+         m_SyncIntervals | std::views::enumerate)
     {
         if (nextSync > now)
         {

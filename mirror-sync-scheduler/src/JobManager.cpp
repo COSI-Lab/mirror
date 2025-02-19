@@ -184,7 +184,7 @@ auto JobManager::kill_all_jobs() -> void
     spdlog::info("Killing all active sync jobs!");
 
     const std::lock_guard<std::mutex> jobLock(m_JobMutex);
-    for (const auto& [jobName, _] : m_ActiveJobs)
+    for ([[maybe_unused]] const auto& [jobName, jobDetails] : m_ActiveJobs)
     {
         kill_job(jobName);
     }
