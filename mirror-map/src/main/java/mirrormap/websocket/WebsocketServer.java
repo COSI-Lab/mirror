@@ -38,12 +38,7 @@ public class WebsocketServer extends Thread {
                 threadPool.submit(new WebsocketServerThread(socket.accept()));
             } catch(IOException e) {
                 log.error("IOexception on opening socket.");
-                if(socket.isClosed()) {
-                    log.error("Server socket forcibly closed.");
-                    return;
-                }
                 log.debug(e.toString());
-                return;
             } catch(RejectedExecutionException e) {
                 log.error("Failed to assign websocket session to thread pool.");
                 log.debug(e.toString());

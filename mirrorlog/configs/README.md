@@ -1,1 +1,0 @@
-Development configs for mirrorlog will be stored here.
