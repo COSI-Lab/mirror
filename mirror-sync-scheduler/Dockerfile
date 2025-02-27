@@ -5,20 +5,17 @@
 FROM ubuntu:24.04 as builder
 RUN apt update && apt install -y g++ cmake libzmq3-dev ninja-build git
 WORKDIR /mirror
-COPY ./src /mirror/src
-COPY ./lib /mirror/lib
-COPY ./CMakeLists.txt /mirror/CMakeLists.txt
-RUN cmake -S/mirror -B/mirror/build -G Ninja
-RUN cmake --build /mirror/build --target clean
-RUN cmake --build /mirror/build --target all
+COPY src src
+COPY include include
+COPY cmake cmake
+COPY CMakeLists.txt CMakeLists.txt
+RUN cmake -B build -G Ninja
+RUN cmake --build build --target all
 
 # Run
 FROM ubuntu:24.04
-RUN apt update && apt install -y python3 curl wget
-RUN apt install -y libzmq3-dev rsync
+RUN apt update && apt install -y python3 curl wget libzmq3-dev rsync
 WORKDIR /mirror
-COPY --from=builder /mirror/build/syncScheduler .
-RUN chmod 744 syncScheduler
-# Port for listening for manual syncs
-EXPOSE 9281
-ENTRYPOINT ["./syncScheduler"]
+COPY --from=builder /mirror/build/src/sync_scheduler .
+RUN chmod 744 sync_scheduler
+ENTRYPOINT ["./sync_scheduler"]
