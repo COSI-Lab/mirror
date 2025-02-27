@@ -1,6 +1,6 @@
 FROM python:3.12-bookworm
 EXPOSE 8000
-RUN pip install django gunicorn
+RUN pip install django gunicorn pyzmq
 RUN useradd --user-group --create-home mirror
 USER mirror
 WORKDIR /home/mirror
