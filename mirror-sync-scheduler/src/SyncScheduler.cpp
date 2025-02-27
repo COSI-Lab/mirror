@@ -144,6 +144,8 @@ auto SyncScheduler::start_sync(const std::string& projectName) -> bool
     const auto  syncConfig      = syncDetails.get_sync_config();
     bool        startSuccessful = false;
 
+    spdlog::trace(syncConfig.dump());
+
     if (syncDetails.get_sync_method() == SyncMethod::RSYNC)
     {
         startSuccessful = m_JobManager.start_job(
