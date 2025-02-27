@@ -61,7 +61,7 @@ auto SyncDetails::compose_rsync_command(
         ));
     }
 
-    std::string command = std::format("/usr/bin/rsync %s", options);
+    std::string command = std::format("/usr/bin/rsync {}", options);
 
     const std::string user = rsyncConfig.value("user", "");
     const std::string host = rsyncConfig.value("host", "");
@@ -132,7 +132,7 @@ auto SyncDetails::generate_script_config(const nlohmann::json& project)
 
     for (const std::string& arg : arguments)
     {
-        command = std::format("%s %s", command, arg);
+        command = std::format("{} {}", command, arg);
     }
 
     config.emplace("command", command);
