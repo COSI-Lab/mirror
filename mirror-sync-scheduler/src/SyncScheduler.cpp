@@ -223,7 +223,7 @@ auto SyncScheduler::run() -> void
                     {
                         socket.send(
                             zmq::message_t(std::format(
-                                "Successfully started sync for {}",
+                                "SUCCESS: started sync for {}",
                                 projectName
                             )),
                             zmq::send_flags::none
@@ -234,7 +234,7 @@ auto SyncScheduler::run() -> void
                     spdlog::error("Manual sync for {} failed", projectName);
                     socket.send(
                         zmq::message_t(std::format(
-                            "Failed to start sync for {}",
+                            "FAILURE: Failed to start sync for {}",
                             projectName
                         )),
                         zmq::send_flags::none
@@ -244,9 +244,10 @@ auto SyncScheduler::run() -> void
 
                 spdlog::error("Project {} not found!", projectName);
                 socket.send(
-                    zmq::message_t(
-                        std::format("Project {} not found!", projectName)
-                    ),
+                    zmq::message_t(std::format(
+                        "FAILURE: Project {} not found!",
+                        projectName
+                    )),
                     zmq::send_flags::none
                 );
             }
