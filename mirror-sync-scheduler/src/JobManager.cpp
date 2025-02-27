@@ -92,15 +92,15 @@ auto JobManager::reap_processes() -> std::vector<std::string>
         {
             if (exitCode == EXIT_SUCCESS)
             {
+                spdlog::info("Project `{}` successfully synced!", jobName);
+            }
+            else
+            {
                 spdlog::warn(
                     "Project `{}` failed to sync! Exit code: {}",
                     jobName,
                     exitCode
                 );
-            }
-            else
-            {
-                spdlog::info("Project `{}` successfully synced!", jobName);
             }
 
             completedJobs.emplace_back(jobName);
