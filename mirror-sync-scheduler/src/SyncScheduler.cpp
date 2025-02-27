@@ -157,7 +157,7 @@ auto SyncScheduler::start_sync(const std::string& projectName) -> bool
         if (syncConfig.contains("secondary") && startSuccessful)
         {
             startSuccessful = m_JobManager.start_job(
-                projectName,
+                std::format("{}_secondary", projectName),
                 syncConfig.at("secondary"),
                 syncDetails.get_password_file()
             );
@@ -166,7 +166,7 @@ auto SyncScheduler::start_sync(const std::string& projectName) -> bool
         if (syncConfig.contains("tertiary") && startSuccessful)
         {
             startSuccessful = m_JobManager.start_job(
-                projectName,
+                std::format("{}_tertiary", projectName),
                 syncConfig.at("tertiary"),
                 syncDetails.get_password_file()
             );
