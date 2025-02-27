@@ -92,7 +92,7 @@ def sync(request: HttpRequest, project: str):
     context = zmq.Context()
     socket = context.socket(zmq.REQ)
     socket.connect("tcp://sync-scheduler:9281")
-    socket.send(project)
+    socket.send_string(project)
     reply = socket.recv()
     socket.close()
 
