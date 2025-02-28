@@ -37,7 +37,7 @@ class JobManager
         const std::filesystem::path& passwordFile
     ) -> bool;
 
-  private:
+  private: // Methods
     auto job_is_running(const std::string& jobName) -> bool;
     auto register_job(
         const std::string& jobName,
@@ -45,10 +45,12 @@ class JobManager
         const int          stdoutPipe,
         const int          stderrPipe
     ) -> void;
-    auto kill_job(const ::pid_t processID) -> void;
     auto kill_all_jobs() -> void;
     auto reap_processes() -> std::vector<::pid_t>;
     auto deregister_jobs(const std::vector<::pid_t>& completedJobs) -> void;
+
+  private: // Static Methods
+    static auto kill_job(const ::pid_t processID) -> void;
 
   private: // Members
     std::map<::pid_t, SyncJob> m_ActiveJobs;
