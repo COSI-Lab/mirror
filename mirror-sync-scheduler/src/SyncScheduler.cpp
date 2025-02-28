@@ -103,10 +103,7 @@ auto SyncScheduler::generate_project_catalogue(const nlohmann::json& mirrors)
         try
         {
             catalogue.emplace(std::make_pair(name, SyncDetails(mirrorDetails)));
-            spdlog::trace(
-                "Catalogued project {}",
-                mirrorDetails.value("name", "")
-            );
+            spdlog::trace("Catalogued project {}", name);
         }
         catch (static_project_exception& spe)
         {
