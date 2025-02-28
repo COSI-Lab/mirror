@@ -176,7 +176,7 @@ auto JobManager::kill_job(const std::string& jobName) -> void
 
     if (killReturn == 0)
     {
-        spdlog::info(
+        spdlog::trace(
             "Successfully sent process {} ({}) a SIGKILL",
             job.processID,
             jobName
@@ -198,23 +198,28 @@ auto JobManager::kill_job(const std::string& jobName) -> void
 
     if (waitReturn == job.processID)
     {
-        spdlog::info("Process {} successfully reaped", job.processID);
+        spdlog::trace("Process {} successfully reaped", job.processID);
     }
     else
     {
-        spdlog::error("Failed to reap process {}!", job.processID);
+        spdlog::error(
+            "Failed to reap process {} after SIGKILL!",
+            job.processID
+        );
     }
 }
 
 auto JobManager::kill_all_jobs() -> void
 {
-    spdlog::info("Killing all active sync jobs!");
+    spdlog::info("Killing all active sync jobs");
 
     const std::lock_guard<std::mutex> jobLock(m_JobMutex);
     for ([[maybe_unused]] const auto& [jobName, jobDetails] : m_ActiveJobs)
     {
         kill_job(jobName);
     }
+
+    spdlog::info("All active syncs have been killed!");
 }
 
 auto JobManager::register_job(
