@@ -197,7 +197,7 @@ auto JobManager::job_is_running(const std::string& jobName) -> bool
     );
 }
 
-auto JobManager::kill_job(const ::pid_t& processID) -> void
+auto JobManager::kill_job(const ::pid_t processID) -> void
 {
     // NOLINTNEXTLINE(misc-include-cleaner)
     const int killReturn = ::kill(processID, SIGKILL);
