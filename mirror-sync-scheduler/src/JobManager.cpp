@@ -158,7 +158,7 @@ auto JobManager::reap_processes() -> std::vector<std::string>
         }
 
         spdlog::warn(
-            "Reaped unknown (zombie) child process with pid: {}! Exit code:",
+            "Reaped unknown (zombie) child process with pid: {}! Exit code: {}",
             waitReturn,
             WEXITSTATUS(status)
         );
