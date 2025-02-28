@@ -56,7 +56,11 @@ JobManager::JobManager()
 
                 spdlog::trace("Process reaper thread going to sleep");
                 std::unique_lock<std::mutex> reaperLock(m_ReaperMutex);
-                m_SleepVariable.wait_for(reaperLock, std::chrono::minutes(1));
+                m_SleepVariable.wait_for(
+                    reaperLock,
+                    std::chrono::minutes(1),
+                    [&]() -> bool { return !m_ActiveJobs.empty(); }
+                );
                 spdlog::trace("Process reaper thread woke up");
             }
         }
