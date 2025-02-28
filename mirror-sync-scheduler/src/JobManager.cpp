@@ -88,15 +88,17 @@ auto JobManager::reap_processes() -> std::vector<std::string>
     const std::lock_guard<std::mutex> JobLock(m_JobMutex);
     for (const auto& [jobName, job] : m_ActiveJobs)
     {
-        int exitCode = 0;
+        int status = 0;
 
         // NOLINTBEGIN(misc-include-cleaner)
-        const ::pid_t status = ::waitpid(job.processID, &exitCode, WNOHANG);
+        const ::pid_t waitReturn = ::waitpid(job.processID, &status, WNOHANG);
         // NOLINTEND(misc-include-cleaner)
 
-        if (status == job.processID) // Process finished executing
+        if (waitReturn == job.processID) // Process finished executing
         {
-            if (exitCode == EXIT_SUCCESS)
+            const auto exitStatus = WEXITSTATUS(status);
+
+            if (exitStatus == EXIT_SUCCESS)
             {
                 spdlog::info(
                     "Project {} successfully synced! (pid: {})",
@@ -109,14 +111,14 @@ auto JobManager::reap_processes() -> std::vector<std::string>
                 spdlog::warn(
                     "Project {} failed to sync! Exit code: {} (pid: {})",
                     jobName,
-                    exitCode,
+                    exitStatus,
                     job.processID
                 );
             }
 
             completedJobs.emplace_back(jobName);
         }
-        else if (status == 0) // Process still running
+        else if (waitReturn == 0) // Process still running
         {
             const auto syncDuration
                 = std::chrono::system_clock::now() - job.startTime;
@@ -136,7 +138,7 @@ auto JobManager::reap_processes() -> std::vector<std::string>
 
             completedJobs.emplace_back(jobName);
         }
-        else if (status == -1) // waitpid() failed
+        else if (waitReturn == -1) // waitpid() failed
         {
             spdlog::error(
                 "waitpid() returned -1 for process with pid: {}! Error "
@@ -156,9 +158,9 @@ auto JobManager::kill_job(const std::string& jobName) -> void
     const auto& job = m_ActiveJobs.at(jobName);
 
     // NOLINTNEXTLINE(misc-include-cleaner)
-    int status = ::kill(job.processID, SIGKILL);
+    const int killReturn = ::kill(job.processID, SIGKILL);
 
-    if (status == 0)
+    if (killReturn == 0)
     {
         spdlog::info(
             "Successfully sent process {} ({}) a SIGKILL",
@@ -178,10 +180,9 @@ auto JobManager::kill_job(const std::string& jobName) -> void
         );
     }
 
-    int exitCode = -1;
-    status       = ::waitpid(job.processID, &exitCode, 0);
+    const int waitReturn = ::waitpid(job.processID, nullptr, 0);
 
-    if (status == job.processID)
+    if (waitReturn == job.processID)
     {
         spdlog::info("Process {} successfully reaped", job.processID);
     }
