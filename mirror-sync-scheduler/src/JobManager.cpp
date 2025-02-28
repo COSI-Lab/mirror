@@ -97,6 +97,11 @@ auto JobManager::reap_processes() -> std::vector<::pid_t>
     for (const ::pid_t childProcessID :
          std::views::istream<::pid_t>(childrenFile))
     {
+        spdlog::trace(
+            "Attempting to wait on process with pid {}",
+            childProcessID
+        );
+
         int status = 0;
 
         // NOLINTBEGIN(misc-include-cleaner)
