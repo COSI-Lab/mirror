@@ -112,17 +112,20 @@ auto JobManager::reap_processes() -> std::vector<::pid_t>
                 continue;
             }
 
+            constexpr std::uint8_t hoursBeforeTimeout = 6;
             const auto syncDuration = std::chrono::system_clock::now()
                                     - m_ActiveJobs.at(childProcessID).startTime;
-            if (syncDuration < std::chrono::hours(1))
+            if (syncDuration < std::chrono::hours(hoursBeforeTimeout))
             {
                 continue;
             }
 
             spdlog::warn(
-                "Project {} has been syncing for at least 1 hour. Process may "
-                "be hanging, killing process. (pid: {})",
+                "Project {} has been syncing for at least {} hour{}. Process "
+                "may be hanging, killing process. (pid: {})",
                 m_ActiveJobs.at(childProcessID).jobName,
+                hoursBeforeTimeout,
+                (hoursBeforeTimeout == 1 ? "" : "s"), // if not one hour, plural
                 childProcessID
             );
 
@@ -204,11 +207,7 @@ auto JobManager::kill_job(const ::pid_t processID) -> void
 
     if (killReturn == 0)
     {
-        spdlog::trace(
-            "Successfully sent process {} ({}) a SIGKILL",
-            processID,
-            processID
-        );
+        spdlog::trace("Successfully sent process {} a SIGKILL", processID);
     }
     else
     {
@@ -216,7 +215,7 @@ auto JobManager::kill_job(const ::pid_t processID) -> void
         errorMessage.clear();
 
         spdlog::error(
-            "Failed to send process {} ({}) a SIGKILL! Error message: {}",
+            "Failed to send process {} a SIGKILL! Error message: {}",
             processID,
             processID,
             ::strerror_r(errno, errorMessage.data(), errorMessage.size())
