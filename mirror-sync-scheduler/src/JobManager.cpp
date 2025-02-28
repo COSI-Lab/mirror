@@ -101,7 +101,7 @@ auto JobManager::reap_processes() -> std::vector<::pid_t>
     {
         spdlog::error(
             "Failed to open children file! Path: ",
-            childrenFilePath.generic_u8string()
+            childrenFilePath.string()
         );
 
         return completedJobs;
