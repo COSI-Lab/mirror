@@ -54,12 +54,6 @@ JobManager::JobManager()
                     return;
                 }
 
-                if (m_ActiveJobs.empty())
-                {
-                    spdlog::trace("No active jobs to reap");
-                    continue;
-                }
-
                 auto completedJobs = reap_processes();
 
                 deregister_jobs(completedJobs);
@@ -82,10 +76,12 @@ auto JobManager::reap_processes() -> std::vector<std::string>
 {
     static std::string errorMessage(BUFSIZ, '\0');
 
-    std::vector<std::string> completedJobs;
+    static std::vector<std::string> completedJobs;
+    completedJobs.clear();
     completedJobs.reserve(m_ActiveJobs.size());
 
     const std::lock_guard<std::mutex> JobLock(m_JobMutex);
+
     for (const auto& [jobName, job] : m_ActiveJobs)
     {
         int status = 0;
@@ -148,6 +144,24 @@ auto JobManager::reap_processes() -> std::vector<std::string>
             );
             completedJobs.emplace_back(jobName);
         }
+    }
+
+    // Check for zombie processes
+    int status = -1;
+    while (true)
+    {
+        const ::pid_t waitReturn = ::waitpid(-1, &status, WNOHANG);
+
+        if (waitReturn == 0 || waitReturn == -1)
+        {
+            break;
+        }
+
+        spdlog::warn(
+            "Reaped unknown (zombie) child process with pid: {}! Exit code:",
+            waitReturn,
+            WEXITSTATUS(status)
+        );
     }
 
     return completedJobs;
@@ -229,6 +243,11 @@ auto JobManager::register_job(
 auto JobManager::deregister_jobs(const std::vector<std::string>& completedJobs)
     -> void
 {
+    if (completedJobs.empty())
+    {
+        return;
+    }
+
     spdlog::trace("Deregistering {} jobs", completedJobs.size());
 
     const std::lock_guard<std::mutex> jobLock(m_JobMutex);
