@@ -91,9 +91,11 @@ auto JobManager::reap_processes() -> std::vector<::pid_t>
 
     const std::lock_guard<std::mutex>  JobLock(m_JobMutex);
     static const std::filesystem::path childrenFilePath
-        = std::filesystem::absolute("/proc")
-        / std::to_string(syncSchedulerProcessID) / "tasks"
-        / std::to_string(syncSchedulerProcessID) / "children";
+        = std::filesystem::absolute(std::format(
+            "/proc/{}/tasks/{}/children",
+            syncSchedulerProcessID,
+            syncSchedulerProcessID
+        ));
 
     std::ifstream childrenFile(childrenFilePath);
 
