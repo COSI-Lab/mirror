@@ -132,6 +132,7 @@ auto JobManager::reap_processes() -> std::vector<::pid_t>
             kill_job(childProcessID);
 
             completedJobs.emplace_back(childProcessID);
+            continue;
         }
         else if (waitReturn == -1) // waitpid() failed
         {
@@ -142,6 +143,7 @@ auto JobManager::reap_processes() -> std::vector<::pid_t>
                 childProcessID
             );
             completedJobs.emplace_back(childProcessID);
+            continue;
         }
 
         const int exitStatus = WEXITSTATUS(status);
