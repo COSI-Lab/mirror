@@ -92,14 +92,19 @@ auto JobManager::reap_processes() -> std::vector<std::string>
         {
             if (exitCode == EXIT_SUCCESS)
             {
-                spdlog::info("Project `{}` successfully synced!", jobName);
+                spdlog::info(
+                    "Project {} successfully synced! (pid: {})",
+                    jobName,
+                    job.processID
+                );
             }
             else
             {
                 spdlog::warn(
-                    "Project `{}` failed to sync! Exit code: {}",
+                    "Project {} failed to sync! Exit code: {} (pid: {})",
                     jobName,
-                    exitCode
+                    exitCode,
+                    job.processID
                 );
             }
 
@@ -115,10 +120,10 @@ auto JobManager::reap_processes() -> std::vector<std::string>
             }
 
             spdlog::warn(
-                "Project `{}` has been syncying for at least 1 "
-                "hour. Process may be hanging, killing "
-                "process.",
-                jobName
+                "Project {} has been syncing for at least 1 hour. Process may "
+                "be hanging, killing process. (pid: {})",
+                jobName,
+                job.processID
             );
 
             kill_job(jobName);
@@ -128,8 +133,10 @@ auto JobManager::reap_processes() -> std::vector<std::string>
         else if (status == -1) // waitpid() failed
         {
             spdlog::error(
-                "waitpid() returned -1! Error message: {}",
-                ::strerror_r(errno, errorMessage.data(), errorMessage.size())
+                "waitpid() returned -1 for process with pid: {}! Error "
+                "message: {}",
+                ::strerror_r(errno, errorMessage.data(), errorMessage.size()),
+                job.processID
             );
             completedJobs.emplace_back(jobName);
         }
@@ -158,8 +165,7 @@ auto JobManager::kill_job(const std::string& jobName) -> void
         static std::string errorMessage(BUFSIZ, '\0');
 
         spdlog::error(
-            "Failed to send process {} ({}) a SIGKILL! "
-            "Error message: {}",
+            "Failed to send process {} ({}) a SIGKILL! Error message: {}",
             job.processID,
             jobName,
             ::strerror_r(errno, errorMessage.data(), errorMessage.size())
