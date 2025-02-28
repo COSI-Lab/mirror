@@ -23,8 +23,8 @@
 #include <filesystem>
 #include <format>
 #include <fstream>
+#include <iterator>
 #include <mutex>
-#include <ranges>
 #include <stop_token>
 #include <string>
 // NOLINTNEXTLINE(*-deprecated-headers, llvm-include-order)
@@ -89,28 +89,40 @@ auto JobManager::reap_processes() -> std::vector<::pid_t>
     completedJobs.clear();
     completedJobs.reserve(m_ActiveJobs.size());
 
+    // TODO: check all children files in the task directory
     const std::lock_guard<std::mutex>  JobLock(m_JobMutex);
-    static const std::filesystem::path childrenFilePath
-        = std::filesystem::absolute(std::format(
-            "/proc/{}/task/{}/children",
-            syncSchedulerProcessID,
-            syncSchedulerProcessID
-        ));
+    static const std::filesystem::path taskDirectory
+        = std::filesystem::absolute("/proc/self/task/");
 
-    std::ifstream childrenFile(childrenFilePath);
-
-    if (!childrenFile.good())
+    std::vector<::pid_t> childProcesses = {};
+    for (const auto item : std::filesystem::directory_iterator(taskDirectory))
     {
-        spdlog::error(
-            "Failed to open children file! Path: {}",
-            childrenFilePath.string()
-        );
+        if (!std::filesystem::is_directory(item))
+        {
+            continue;
+        }
 
-        return completedJobs;
+        std::ifstream childrenFile(item.path() / "children");
+
+        if (!childrenFile.good())
+        {
+            spdlog::error(
+                "Failed to open children file! Path: {}",
+                (item.path() / "children").string()
+            );
+
+            continue;
+        }
+
+        childProcesses.insert(
+            childProcesses.end(),
+            std::istream_iterator<::pid_t>(childrenFile),
+            {}
+        );
     }
 
-    for (const ::pid_t childProcessID :
-         std::views::istream<::pid_t>(childrenFile))
+    // Gather pids
+    for (const ::pid_t childProcessID : childProcesses)
     {
         spdlog::trace(
             "Attempting to wait on process with pid {}",
@@ -141,7 +153,8 @@ auto JobManager::reap_processes() -> std::vector<::pid_t>
             }
 
             spdlog::warn(
-                "Project {} has been syncing for at least {} hour{}. Process "
+                "Project {} has been syncing for at least {} hour{}. "
+                "Process "
                 "may be hanging, killing process. (pid: {})",
                 m_ActiveJobs.at(childProcessID).jobName,
                 hoursBeforeTimeout,
@@ -181,7 +194,8 @@ auto JobManager::reap_processes() -> std::vector<::pid_t>
             else
             {
                 spdlog::info(
-                    "Reaped successful unregistered child process with pid {}",
+                    "Reaped successful unregistered child process with pid "
+                    "{}",
                     childProcessID
                 );
             }
@@ -200,7 +214,8 @@ auto JobManager::reap_processes() -> std::vector<::pid_t>
             else
             {
                 spdlog::warn(
-                    "Reaped unsuccessful unregistered child process with pid "
+                    "Reaped unsuccessful unregistered child process with "
+                    "pid "
                     "{}",
                     childProcessID
                 );
