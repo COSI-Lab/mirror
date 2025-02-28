@@ -300,6 +300,7 @@ auto JobManager::start_job(
 
             passwordFileStream >> syncPassword;
 
+            // Put rsync password into the child process' environment
             // NOLINTNEXTLINE(concurrency-mt-unsafe, misc-include-cleaner)
             ::putenv(std::format("RSYNC_PASSWORD={}", syncPassword).data());
         }
@@ -321,8 +322,8 @@ auto JobManager::start_job(
         );
 
         // Keep memory from leaking in the event that exec fails
-        free(argv0);
-        free(argv1);
+        ::free(argv0);
+        ::free(argv1);
 
         return false;
     }
