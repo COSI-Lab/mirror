@@ -245,6 +245,7 @@ auto JobManager::deregister_jobs(const std::vector<std::string>& completedJobs)
 {
     if (completedJobs.empty())
     {
+        spdlog::trace("No jobs to deregister");
         return;
     }
 
