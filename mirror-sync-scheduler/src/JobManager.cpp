@@ -192,7 +192,9 @@ auto JobManager::kill_all_jobs() -> void
 
 auto JobManager::register_job(
     const std::string& jobName,
-    const ::pid_t      processID
+    const ::pid_t      processID,
+    const int          stdoutPipe,
+    const int          stderrPipe
 ) -> void
 {
     spdlog::debug(
@@ -204,8 +206,10 @@ auto JobManager::register_job(
     const std::lock_guard<std::mutex> jobLock(m_JobMutex);
     m_ActiveJobs.emplace(
         jobName,
-        SyncJob { .processID = processID,
-                  .startTime = std::chrono::system_clock::now() }
+        SyncJob { .processID  = processID,
+                  .stdoutPipe = stdoutPipe,
+                  .stderrPipe = stderrPipe,
+                  .startTime  = std::chrono::system_clock::now() }
     );
 }
 
@@ -229,18 +233,42 @@ auto JobManager::start_job(
 ) -> bool
 // NOLINTEND(*-easily-swappable-parameters)
 {
-    std::array<int, 2> pipes = { -1, -1 };
+    if (m_ActiveJobs.contains(jobName))
+    {
+        spdlog::warn(
+            "A job with the name \"{}\" already exists! Not starting "
+            "a duplicate job",
+            jobName
+        );
+        return false;
+    }
 
-    const int status = ::pipe(pipes.data());
+    std::array<int, 2> stdoutPipes = { -1, -1 };
+    std::array<int, 2> stderrPipes = { -1, -1 };
+
+    int status = ::pipe(stdoutPipes.data());
 
     if (status != 0)
     {
         static std::string errorMessage(BUFSIZ, '\0');
 
         spdlog::warn(
-            "Failed to create pipe while syncing project `{}`! Error "
-            "message: "
-            "{}",
+            "Failed to create pipe for child stdout while syncing project "
+            "{}! Error message: {}",
+            jobName,
+            ::strerror_r(errno, errorMessage.data(), errorMessage.size())
+        );
+    }
+
+    status = ::pipe(stderrPipes.data());
+
+    if (status != 0)
+    {
+        static std::string errorMessage(BUFSIZ, '\0');
+
+        spdlog::warn(
+            "Failed to create pipe for child stderr while syncing project "
+            "{}! Error message: {}",
             jobName,
             ::strerror_r(errno, errorMessage.data(), errorMessage.size())
         );
@@ -250,8 +278,13 @@ auto JobManager::start_job(
 
     if (pid == 0) // Child Process
     {
-        ::close(pipes.at(0));
-        ::dup2(pipes.at(1), STDOUT_FILENO);
+        // Close read end of the stdout pipe in the child process
+        ::close(stdoutPipes.at(0));
+        ::dup2(stdoutPipes.at(1), STDOUT_FILENO);
+
+        // Close read end of the stderr pipe in the child process
+        ::close(stderrPipes.at(0));
+        ::dup2(stderrPipes.at(1), STDERR_FILENO);
 
         if (std::filesystem::exists(passwordFile)
             && std::filesystem::is_regular_file(passwordFile))
@@ -271,8 +304,10 @@ auto JobManager::start_job(
             ::putenv(std::format("RSYNC_PASSWORD={}", syncPassword).data());
         }
 
-        const std::array<char*, 3> argv
-            = { ::strdup("/bin/sh"), ::strdup("-c"), command.data() };
+        auto* argv0 = ::strdup("/bin/sh");
+        auto* argv1 = ::strdup("-c");
+
+        const std::array<char*, 3> argv = { argv0, argv1, command.data() };
 
         ::execv(argv.at(0), argv.data());
 
@@ -284,6 +319,12 @@ auto JobManager::start_job(
             jobName,
             ::strerror_r(errno, errorMessage.data(), errorMessage.size())
         );
+
+        // Keep memory from leaking in the event that exec fails
+        free(argv0);
+        free(argv1);
+
+        return false;
     }
     else if (pid == -1)
     {
@@ -298,7 +339,13 @@ auto JobManager::start_job(
         return false;
     }
 
-    register_job(jobName, pid);
+    // Close write end of the stdout pipe in the parent process
+    ::close(stdoutPipes.at(1));
+
+    // Close write end of the stderr pipe in the parent process
+    ::close(stderrPipes.at(1));
+
+    register_job(jobName, pid, stdoutPipes.at(1), stderrPipes.at(1));
     return true;
 }
 

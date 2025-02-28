@@ -43,8 +43,12 @@ class JobManager
     ) -> bool;
 
   private:
-    auto register_job(const std::string& jobName, const ::pid_t processID)
-        -> void;
+    auto register_job(
+        const std::string& jobName,
+        const ::pid_t      processID,
+        const int          stdoutPipe,
+        const int          stderrPipe
+    ) -> void;
     auto kill_job(const std::string& jobName) -> void;
     auto kill_all_jobs() -> void;
     auto reap_processes() -> std::vector<std::string>;
