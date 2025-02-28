@@ -102,7 +102,7 @@ auto JobManager::reap_processes() -> std::vector<::pid_t>
     if (!childrenFile.good())
     {
         spdlog::error(
-            "Failed to open children file! Path: ",
+            "Failed to open children file! Path: {}",
             childrenFilePath.string()
         );
 
