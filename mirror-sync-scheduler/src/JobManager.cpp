@@ -41,6 +41,11 @@ JobManager::JobManager()
         {
             while (true)
             {
+                spdlog::trace("Process reaper thread going to sleep");
+                std::unique_lock<std::mutex> reaperLock(m_ReaperMutex);
+                m_SleepVariable.wait_for(reaperLock, std::chrono::minutes(1));
+                spdlog::trace("Process reaper thread woke up");
+
                 if (stopToken.stop_requested())
                 {
                     spdlog::info("Process reaper thread stop requested");
@@ -49,19 +54,16 @@ JobManager::JobManager()
                     return;
                 }
 
+                if (m_ActiveJobs.empty())
+                {
+                    spdlog::trace("No active jobs to reap");
+                    continue;
+                }
+
                 auto completedJobs = reap_processes();
 
                 deregister_jobs(completedJobs);
                 completedJobs.clear();
-
-                spdlog::trace("Process reaper thread going to sleep");
-                std::unique_lock<std::mutex> reaperLock(m_ReaperMutex);
-                m_SleepVariable.wait_for(
-                    reaperLock,
-                    std::chrono::minutes(1),
-                    [&]() -> bool { return !m_ActiveJobs.empty(); }
-                );
-                spdlog::trace("Process reaper thread woke up");
             }
         }
     );
@@ -332,8 +334,10 @@ auto JobManager::start_job(
         );
 
         // Keep memory from leaking in the event that exec fails
+        // NOLINTBEGIN(*-no-malloc, *-owning-memory)
         ::free(argv0);
         ::free(argv1);
+        // NOLINTEND(*-no-malloc, *-owning-memory)
 
         return false;
     }
