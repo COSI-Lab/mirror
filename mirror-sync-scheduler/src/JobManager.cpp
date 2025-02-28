@@ -13,6 +13,7 @@
 #include <unistd.h>
 
 // Standard Library Includes
+#include <algorithm>
 #include <array>
 #include <cerrno>
 #include <chrono>
@@ -20,8 +21,10 @@
 #include <cstdio>
 #include <cstdlib>
 #include <filesystem>
+#include <format>
 #include <fstream>
 #include <mutex>
+#include <ranges>
 #include <stop_token>
 #include <string>
 // NOLINTNEXTLINE(*-deprecated-headers, llvm-include-order)
@@ -31,6 +34,9 @@
 
 // Third Party Includes
 #include <spdlog/spdlog.h>
+
+// Project Includes
+#include <mirror/sync_scheduler/SyncJob.hpp>
 
 namespace mirror::sync_scheduler
 {
@@ -72,52 +78,42 @@ JobManager::~JobManager()
     spdlog::info("Process reaper thread joined!");
 }
 
-auto JobManager::reap_processes() -> std::vector<std::string>
+auto JobManager::reap_processes() -> std::vector<::pid_t>
 {
     static std::string errorMessage(BUFSIZ, '\0');
+    errorMessage.clear();
 
-    static std::vector<std::string> completedJobs;
+    static const ::pid_t syncSchedulerProcessID = ::getpid();
+
+    static std::vector<::pid_t> completedJobs;
     completedJobs.clear();
     completedJobs.reserve(m_ActiveJobs.size());
 
     const std::lock_guard<std::mutex> JobLock(m_JobMutex);
+    std::ifstream                     childrenFile(
+        std::format("/proc/{0}/tasks/{0}/children", syncSchedulerProcessID)
+    );
 
-    for (const auto& [jobName, job] : m_ActiveJobs)
+    for (const ::pid_t childProcessID :
+         std::views::istream<::pid_t>(childrenFile))
     {
         int status = 0;
 
         // NOLINTBEGIN(misc-include-cleaner)
-        const ::pid_t waitReturn = ::waitpid(job.processID, &status, WNOHANG);
+        const ::pid_t waitReturn = ::waitpid(childProcessID, &status, WNOHANG);
         // NOLINTEND(misc-include-cleaner)
 
-        if (waitReturn == job.processID) // Process finished executing
-        {
-            const auto exitStatus = WEXITSTATUS(status);
+        const bool isKnownJob = m_ActiveJobs.contains(childProcessID);
 
-            if (exitStatus == EXIT_SUCCESS)
+        if (waitReturn == 0) // Process still running
+        {
+            if (!isKnownJob)
             {
-                spdlog::info(
-                    "Project {} successfully synced! (pid: {})",
-                    jobName,
-                    job.processID
-                );
-            }
-            else
-            {
-                spdlog::warn(
-                    "Project {} failed to sync! Exit code: {} (pid: {})",
-                    jobName,
-                    exitStatus,
-                    job.processID
-                );
+                continue;
             }
 
-            completedJobs.emplace_back(jobName);
-        }
-        else if (waitReturn == 0) // Process still running
-        {
-            const auto syncDuration
-                = std::chrono::system_clock::now() - job.startTime;
+            const auto syncDuration = std::chrono::system_clock::now()
+                                    - m_ActiveJobs.at(childProcessID).startTime;
             if (syncDuration < std::chrono::hours(1))
             {
                 continue;
@@ -126,13 +122,13 @@ auto JobManager::reap_processes() -> std::vector<std::string>
             spdlog::warn(
                 "Project {} has been syncing for at least 1 hour. Process may "
                 "be hanging, killing process. (pid: {})",
-                jobName,
-                job.processID
+                m_ActiveJobs.at(childProcessID).jobName,
+                childProcessID
             );
 
-            kill_job(jobName);
+            kill_job(childProcessID);
 
-            completedJobs.emplace_back(jobName);
+            completedJobs.emplace_back(childProcessID);
         }
         else if (waitReturn == -1) // waitpid() failed
         {
@@ -140,72 +136,102 @@ auto JobManager::reap_processes() -> std::vector<std::string>
                 "waitpid() returned -1 for process with pid: {}! Error "
                 "message: {}",
                 ::strerror_r(errno, errorMessage.data(), errorMessage.size()),
-                job.processID
+                childProcessID
             );
-            completedJobs.emplace_back(jobName);
+            completedJobs.emplace_back(childProcessID);
         }
-    }
 
-    // Check for zombie processes
-    int status = -1;
-    while (true)
-    {
-        const ::pid_t waitReturn = ::waitpid(-1, &status, WNOHANG);
+        const int exitStatus = WEXITSTATUS(status);
 
-        if (waitReturn == 0 || waitReturn == -1)
+        if (exitStatus == EXIT_SUCCESS)
         {
-            break;
+            if (isKnownJob)
+            {
+                spdlog::info(
+                    "Project {} successfully synced! (pid: {})",
+                    m_ActiveJobs.at(childProcessID).jobName,
+                    childProcessID
+                );
+            }
+            else
+            {
+                spdlog::info(
+                    "Reaped successful unregistered child process with pid {}",
+                    childProcessID
+                );
+            }
+        }
+        else
+        {
+            if (isKnownJob)
+            {
+                spdlog::warn(
+                    "Project {} failed to sync! Exit code: {} (pid: {})",
+                    m_ActiveJobs.at(childProcessID).jobName,
+                    exitStatus,
+                    childProcessID
+                );
+            }
+            else
+            {
+                spdlog::warn(
+                    "Reaped unsuccessful unregistered child process with pid "
+                    "{}",
+                    childProcessID
+                );
+            }
         }
 
-        spdlog::warn(
-            "Reaped unknown (zombie) child process with pid: {}! Exit code: {}",
-            waitReturn,
-            WEXITSTATUS(status)
-        );
+        completedJobs.emplace_back(childProcessID);
     }
 
     return completedJobs;
 }
 
-auto JobManager::kill_job(const std::string& jobName) -> void
+auto JobManager::job_is_running(const std::string& jobName) -> bool
 {
-    const auto& job = m_ActiveJobs.at(jobName);
+    return std::ranges::any_of(
+        m_ActiveJobs,
+        [&jobName](const auto& job) -> bool
+        { return job.second.jobName == jobName; }
+    );
+}
 
+auto JobManager::kill_job(const ::pid_t& processID) -> void
+{
     // NOLINTNEXTLINE(misc-include-cleaner)
-    const int killReturn = ::kill(job.processID, SIGKILL);
+    const int killReturn = ::kill(processID, SIGKILL);
 
     if (killReturn == 0)
     {
         spdlog::trace(
             "Successfully sent process {} ({}) a SIGKILL",
-            job.processID,
-            jobName
+            processID,
+            processID
         );
     }
     else
     {
         static std::string errorMessage(BUFSIZ, '\0');
+        errorMessage.clear();
 
         spdlog::error(
             "Failed to send process {} ({}) a SIGKILL! Error message: {}",
-            job.processID,
-            jobName,
+            processID,
+            processID,
             ::strerror_r(errno, errorMessage.data(), errorMessage.size())
         );
     }
 
-    const int waitReturn = ::waitpid(job.processID, nullptr, 0);
+    const int waitReturn = ::waitpid(processID, nullptr, 0);
 
-    if (waitReturn == job.processID)
+    if (waitReturn == processID)
     {
-        spdlog::trace("Process {} successfully reaped", job.processID);
+        spdlog::trace("Process {} successfully reaped", processID);
     }
     else
     {
-        spdlog::error(
-            "Failed to reap process {} after SIGKILL!",
-            job.processID
-        );
+        spdlog::error("Failed to reap process {} after SIGKILL!", processID);
     }
 }
 
@@ -214,9 +240,9 @@ auto JobManager::kill_all_jobs() -> void
     spdlog::info("Killing all active sync jobs");
 
     const std::lock_guard<std::mutex> jobLock(m_JobMutex);
-    for ([[maybe_unused]] const auto& [jobName, jobDetails] : m_ActiveJobs)
+    for ([[maybe_unused]] const auto& [processID, jobDetails] : m_ActiveJobs)
     {
-        kill_job(jobName);
+        kill_job(processID);
     }
 
     spdlog::info("All active syncs have been killed!");
@@ -237,15 +263,15 @@ auto JobManager::register_job(
 
     const std::lock_guard<std::mutex> jobLock(m_JobMutex);
     m_ActiveJobs.emplace(
-        jobName,
-        SyncJob { .processID  = processID,
+        processID,
+        SyncJob { .jobName    = jobName,
                   .stdoutPipe = stdoutPipe,
                   .stderrPipe = stderrPipe,
                   .startTime  = std::chrono::system_clock::now() }
     );
 }
 
-auto JobManager::deregister_jobs(const std::vector<std::string>& completedJobs)
+auto JobManager::deregister_jobs(const std::vector<::pid_t>& completedJobs)
     -> void
 {
     if (completedJobs.empty())
@@ -271,7 +297,7 @@ auto JobManager::start_job(
 ) -> bool
 // NOLINTEND(*-easily-swappable-parameters)
 {
-    if (m_ActiveJobs.contains(jobName))
+    if (job_is_running(jobName))
     {
         spdlog::warn(
             "A job with the name \"{}\" already exists! Not starting "
@@ -289,6 +315,7 @@ auto JobManager::start_job(
     if (status != 0)
     {
         static std::string errorMessage(BUFSIZ, '\0');
+        errorMessage.clear();
 
         spdlog::warn(
             "Failed to create pipe for child stdout while syncing project "
@@ -303,6 +330,7 @@ auto JobManager::start_job(
     if (status != 0)
     {
         static std::string errorMessage(BUFSIZ, '\0');
+        errorMessage.clear();
 
         spdlog::warn(
             "Failed to create pipe for child stderr while syncing project "
@@ -352,6 +380,7 @@ auto JobManager::start_job(
 
         // If we get here `::execv()` failed
         static std::string errorMessage(BUFSIZ, '\0');
+        errorMessage.clear();
 
         spdlog::error(
             "Call to execv() failed while trying to sync {}! Error message: {}",
@@ -370,6 +399,7 @@ auto JobManager::start_job(
     else if (pid == -1)
     {
         static std::string errorMessage(BUFSIZ, '\0');
+        errorMessage.clear();
 
         spdlog::error(
             "Failed to fork process for project `{}`! Error message: "

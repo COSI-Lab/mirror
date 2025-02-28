@@ -77,6 +77,7 @@ auto SyncScheduler::load_json_config(const std::filesystem::path& file)
     if (!mirrorsConfigFile.good())
     {
         static std::string errorMessage(BUFSIZ, '\0');
+        errorMessage.clear();
 
         throw std::runtime_error(std::format(
             "Failed to load config file {}! OS Error: {}",
@@ -124,15 +125,6 @@ auto SyncScheduler::start_sync(const std::string& projectName) -> bool
     {
         spdlog::info("Starting dry run sync for {}", projectName);
         return true;
-    }
-
-    if (m_JobManager.job_is_running(projectName))
-    {
-        spdlog::warn(
-            "Sync for {} already running, not starting a new sync",
-            projectName
-        );
-        return false;
     }
 
     spdlog::info("Attempting sync for {}", projectName);
