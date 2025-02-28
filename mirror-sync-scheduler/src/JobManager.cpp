@@ -89,10 +89,23 @@ auto JobManager::reap_processes() -> std::vector<::pid_t>
     completedJobs.clear();
     completedJobs.reserve(m_ActiveJobs.size());
 
-    const std::lock_guard<std::mutex> JobLock(m_JobMutex);
-    std::ifstream                     childrenFile(
-        std::format("/proc/{0}/tasks/{0}/children", syncSchedulerProcessID)
-    );
+    const std::lock_guard<std::mutex>  JobLock(m_JobMutex);
+    static const std::filesystem::path childrenFilePath
+        = std::filesystem::absolute("/proc")
+        / std::to_string(syncSchedulerProcessID) / "tasks"
+        / std::to_string(syncSchedulerProcessID) / "children";
+
+    std::ifstream childrenFile(childrenFilePath);
+
+    if (!childrenFile.good())
+    {
+        spdlog::error(
+            "Failed to open children file! Path: ",
+            childrenFilePath.generic_u8string()
+        );
+
+        return completedJobs;
+    }
 
     for (const ::pid_t childProcessID :
          std::views::istream<::pid_t>(childrenFile))
