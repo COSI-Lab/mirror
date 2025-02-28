@@ -95,7 +95,7 @@ auto JobManager::reap_processes() -> std::vector<::pid_t>
         = std::filesystem::absolute("/proc/self/task/");
 
     std::vector<::pid_t> childProcesses = {};
-    for (const auto item : std::filesystem::directory_iterator(taskDirectory))
+    for (const auto& item : std::filesystem::directory_iterator(taskDirectory))
     {
         if (!std::filesystem::is_directory(item))
         {
