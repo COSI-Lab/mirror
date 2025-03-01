@@ -183,9 +183,9 @@ auto JobManager::reap_processes() -> std::vector<::pid_t>
 
         const int exitStatus = WEXITSTATUS(status);
 
-        if (exitStatus == EXIT_SUCCESS)
+        if (isKnownJob)
         {
-            if (isKnownJob)
+            if (exitStatus == EXIT_SUCCESS)
             {
                 spdlog::info(
                     "Project {} successfully synced! (pid: {})",
@@ -195,20 +195,22 @@ auto JobManager::reap_processes() -> std::vector<::pid_t>
             }
             else
             {
-                spdlog::info(
-                    "Reaped successful unregistered child process with pid {}",
-                    childProcessID
-                );
-            }
-        }
-        else
-        {
-            if (isKnownJob)
-            {
                 spdlog::warn(
                     "Project {} failed to sync! Exit code: {} (pid: {})",
                     m_ActiveJobs.at(childProcessID).jobName,
                     exitStatus,
+                    childProcessID
+                );
+            }
+
+            completedJobs.emplace_back(childProcessID);
+        }
+        else
+        {
+            if (exitStatus == EXIT_SUCCESS)
+            {
+                spdlog::info(
+                    "Reaped successful unregistered child process with pid {}",
                     childProcessID
                 );
             }
@@ -221,8 +223,6 @@ auto JobManager::reap_processes() -> std::vector<::pid_t>
                 );
             }
         }
-
-        completedJobs.emplace_back(childProcessID);
     }
 
     return completedJobs;
