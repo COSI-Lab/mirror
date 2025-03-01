@@ -18,6 +18,7 @@
 #include <cerrno>
 #include <chrono>
 #include <csignal>
+#include <cstdint>
 #include <cstdio>
 #include <cstdlib>
 #include <filesystem>
@@ -78,19 +79,8 @@ JobManager::~JobManager()
     spdlog::info("Process reaper thread joined!");
 }
 
-auto JobManager::reap_processes() -> std::vector<::pid_t>
+auto JobManager::get_child_process_ids() -> std::vector<::pid_t>
 {
-    static std::string errorMessage(BUFSIZ, '\0');
-    errorMessage.clear();
-
-    static const ::pid_t syncSchedulerProcessID = ::getpid();
-
-    static std::vector<::pid_t> completedJobs;
-    completedJobs.clear();
-    completedJobs.reserve(m_ActiveJobs.size());
-
-    // TODO: check all children files in the task directory
-    const std::lock_guard<std::mutex>  JobLock(m_JobMutex);
     static const std::filesystem::path taskDirectory
         = std::filesystem::absolute("/proc/self/task/");
 
@@ -121,8 +111,22 @@ auto JobManager::reap_processes() -> std::vector<::pid_t>
         );
     }
 
-    // Gather pids
-    for (const ::pid_t childProcessID : childProcesses)
+    return childProcesses;
+}
+
+auto JobManager::reap_processes() -> std::vector<::pid_t>
+{
+    static std::string errorMessage(BUFSIZ, '\0');
+    errorMessage.clear();
+
+    static const ::pid_t syncSchedulerProcessID = ::getpid();
+
+    static std::vector<::pid_t> completedJobs;
+    completedJobs.clear();
+    completedJobs.reserve(m_ActiveJobs.size());
+
+    const std::lock_guard<std::mutex> JobLock(m_JobMutex);
+    for (const ::pid_t childProcessID : get_child_process_ids())
     {
         spdlog::trace(
             "Attempting to wait on process with pid {}",
@@ -131,9 +135,8 @@ auto JobManager::reap_processes() -> std::vector<::pid_t>
 
         int status = 0;
 
-        // NOLINTBEGIN(misc-include-cleaner)
+        // NOLINTNEXTLINE(misc-include-cleaner)
         const ::pid_t waitReturn = ::waitpid(childProcessID, &status, WNOHANG);
-        // NOLINTEND(misc-include-cleaner)
 
         const bool isKnownJob = m_ActiveJobs.contains(childProcessID);
 
@@ -153,8 +156,7 @@ auto JobManager::reap_processes() -> std::vector<::pid_t>
             }
 
             spdlog::warn(
-                "Project {} has been syncing for at least {} hour{}. "
-                "Process "
+                "Project {} has been syncing for at least {} hour{}. Process "
                 "may be hanging, killing process. (pid: {})",
                 m_ActiveJobs.at(childProcessID).jobName,
                 hoursBeforeTimeout,
@@ -194,8 +196,7 @@ auto JobManager::reap_processes() -> std::vector<::pid_t>
             else
             {
                 spdlog::info(
-                    "Reaped successful unregistered child process with pid "
-                    "{}",
+                    "Reaped successful unregistered child process with pid {}",
                     childProcessID
                 );
             }
@@ -214,8 +215,7 @@ auto JobManager::reap_processes() -> std::vector<::pid_t>
             else
             {
                 spdlog::warn(
-                    "Reaped unsuccessful unregistered child process with "
-                    "pid "
+                    "Reaped unsuccessful unregistered child process with pid "
                     "{}",
                     childProcessID
                 );
@@ -233,7 +233,10 @@ auto JobManager::job_is_running(const std::string& jobName) -> bool
     return std::ranges::any_of(
         m_ActiveJobs,
         [&jobName](const auto& job) -> bool
-        { return job.second.jobName == jobName; }
+        {
+            const auto& [processID, jobDetails] = job;
+            return jobDetails.jobName == jobName;
+        }
     );
 }
 
@@ -253,7 +256,6 @@ auto JobManager::kill_job(const ::pid_t processID) -> void
 
         spdlog::error(
             "Failed to send process {} a SIGKILL! Error message: {}",
-            processID,
             processID,
             ::strerror_r(errno, errorMessage.data(), errorMessage.size())
         );
@@ -336,8 +338,8 @@ auto JobManager::start_job(
     if (job_is_running(jobName))
     {
         spdlog::warn(
-            "A job with the name \"{}\" already exists! Not starting "
-            "a duplicate job",
+            "A job with the name \"{}\" already exists! Not starting a "
+            "duplicate job",
             jobName
         );
         return false;
@@ -354,8 +356,8 @@ auto JobManager::start_job(
         errorMessage.clear();
 
         spdlog::warn(
-            "Failed to create pipe for child stdout while syncing project "
-            "{}! Error message: {}",
+            "Failed to create pipe for child stdout while syncing project {}! "
+            "Error message: {}",
             jobName,
             ::strerror_r(errno, errorMessage.data(), errorMessage.size())
         );
@@ -369,8 +371,8 @@ auto JobManager::start_job(
         errorMessage.clear();
 
         spdlog::warn(
-            "Failed to create pipe for child stderr while syncing project "
-            "{}! Error message: {}",
+            "Failed to create pipe for child stderr while syncing project {}! "
+            "Error message: {}",
             jobName,
             ::strerror_r(errno, errorMessage.data(), errorMessage.size())
         );
@@ -438,8 +440,7 @@ auto JobManager::start_job(
         errorMessage.clear();
 
         spdlog::error(
-            "Failed to fork process for project `{}`! Error message: "
-            "{}",
+            "Failed to fork process for project `{}`! Error message: {}",
             jobName,
             ::strerror_r(errno, errorMessage.data(), errorMessage.size())
         );
@@ -455,5 +456,4 @@ auto JobManager::start_job(
     register_job(jobName, pid, stdoutPipes.at(1), stderrPipes.at(1));
     return true;
 }
-
 } // namespace mirror::sync_scheduler
