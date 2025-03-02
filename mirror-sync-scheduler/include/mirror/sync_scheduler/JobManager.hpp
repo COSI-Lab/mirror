@@ -50,7 +50,7 @@ class JobManager
     auto deregister_jobs(const std::vector<::pid_t>& completedJobs) -> void;
 
   private: // Static Methods
-    static auto JobManager::get_child_process_ids() -> std::vector<::pid_t>;
+    static auto get_child_process_ids() -> std::vector<::pid_t>;
     static auto interrupt_job(const ::pid_t processID) -> bool;
     static auto kill_job(const ::pid_t processID) -> void;
 
