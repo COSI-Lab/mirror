@@ -250,7 +250,7 @@ static auto JobManager::interrupt_job(const ::pid_t processID) -> bool
         return false;
     }
 
-    spdlog::trace("Successfully sent process {} a SIGTERM", processID);
+    spdlog::debug("Successfully sent process {} a SIGTERM", processID);
 
     constexpr auto sigtermTimeout = std::chrono::seconds(30);
     const auto     start          = std::chrono::system_clock::now();
@@ -365,7 +365,7 @@ auto JobManager::deregister_jobs(const std::vector<::pid_t>& completedJobs)
         return;
     }
 
-    spdlog::trace("Deregistering {} jobs", completedJobs.size());
+    spdlog::debug("Deregistering {} jobs", completedJobs.size());
 
     const std::lock_guard<std::mutex> jobLock(m_JobMutex);
     for (const auto& job : completedJobs)
