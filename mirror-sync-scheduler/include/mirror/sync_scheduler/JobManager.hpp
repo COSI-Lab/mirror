@@ -51,6 +51,7 @@ class JobManager
 
   private: // Static Methods
     static auto JobManager::get_child_process_ids() -> std::vector<::pid_t>;
+    static auto interrupt_job(const ::pid_t processID) -> bool;
     static auto kill_job(const ::pid_t processID) -> void;
 
   private: // Members

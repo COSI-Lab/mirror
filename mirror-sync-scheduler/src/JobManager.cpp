@@ -157,14 +157,17 @@ auto JobManager::reap_processes() -> std::vector<::pid_t>
 
             spdlog::warn(
                 "Project {} has been syncing for at least {} hour{}. Process "
-                "may be hanging, killing process. (pid: {})",
+                "may be hanging, attempting to send SIGTERM. (pid: {})",
                 m_ActiveJobs.at(childProcessID).jobName,
                 hoursBeforeTimeout,
                 (hoursBeforeTimeout == 1 ? "" : "s"), // if not one hour, plural
                 childProcessID
             );
 
-            kill_job(childProcessID);
+            if (!interrupt_job(childProcessID))
+            {
+                kill_job(childProcessID);
+            }
 
             completedJobs.emplace_back(childProcessID);
             continue;
@@ -228,6 +231,50 @@ auto JobManager::reap_processes() -> std::vector<::pid_t>
     return completedJobs;
 }
 
+static auto JobManager::interrupt_job(const ::pid_t processID) -> bool
+{
+    // NOLINTNEXTLINE(misc-include-cleaner)
+    const int killReturn = ::killpg(processID, SIGTERM);
+
+    if (killReturn != 0)
+    {
+        static std::string errorMessage(BUFSIZ, '\0');
+        errorMessage.clear();
+
+        spdlog::error(
+            "Failed to send process {} a SIGTERM! Error message: {}",
+            processID,
+            ::strerror_r(errno, errorMessage.data(), errorMessage.size())
+        );
+
+        return false;
+    }
+
+    spdlog::trace("Successfully sent process {} a SIGTERM", processID);
+
+    constexpr auto sigtermTimeout = std::chrono::seconds(30);
+    const auto     start          = std::chrono::system_clock::now();
+    auto           now            = std::chrono::system_clock::now();
+
+    while ((now - start) < sigtermTimeout)
+    {
+        const int waitReturn = ::waitpid(processID, nullptr, WNOHANG);
+
+        if (waitReturn == processID)
+        {
+            spdlog::trace("Process {} successfully reaped", processID);
+            return true;
+        }
+
+        std::this_thread::sleep_for(std::chrono::milliseconds(100));
+
+        now = std::chrono::system_clock::now();
+    }
+
+    spdlog::error("Failed to terminate process {} with SIGTERM", processID);
+    return false;
+}
+
 auto JobManager::job_is_running(const std::string& jobName) -> bool
 {
     return std::ranges::any_of(
@@ -243,7 +290,7 @@ auto JobManager::job_is_running(const std::string& jobName) -> bool
 auto JobManager::kill_job(const ::pid_t processID) -> void
 {
     // NOLINTNEXTLINE(misc-include-cleaner)
-    const int killReturn = ::kill(processID, SIGKILL);
+    const int killReturn = ::killpg(processID, SIGKILL);
 
     if (killReturn == 0)
     {
@@ -414,6 +461,8 @@ auto JobManager::start_job(
 
         const std::array<char*, 3> argv = { argv0, argv1, command.data() };
 
+        const ::pid_t currentProcessID = getpid();
+        ::setpgid(currentProcessID, currentProcessID);
         ::execv(argv.at(0), argv.data());
 
         // If we get here `::execv()` failed
