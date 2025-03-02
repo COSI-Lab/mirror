@@ -231,7 +231,7 @@ auto JobManager::reap_processes() -> std::vector<::pid_t>
     return completedJobs;
 }
 
-static auto JobManager::interrupt_job(const ::pid_t processID) -> bool
+auto JobManager::interrupt_job(const ::pid_t processID) -> bool
 {
     // NOLINTNEXTLINE(misc-include-cleaner)
     const int killReturn = ::killpg(processID, SIGTERM);
