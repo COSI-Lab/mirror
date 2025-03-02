@@ -65,7 +65,6 @@ def map(request: HttpRequest):
 def contact(request: HttpRequest):
     return render(request, "contact.html")
 
-@cache_page(30)
 @require_http_methods(["GET", "POST"])
 def sync(request: HttpRequest, project: str):
     token = ""
