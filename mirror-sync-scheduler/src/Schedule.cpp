@@ -106,7 +106,7 @@ auto Schedule::verify(const ProjectCatalogue& projects) -> void
         }
     }
 
-    spdlog::debug("Successfully verified sync schedule");
+    spdlog::debug("Successfully verified sync schedule!");
 }
 
 auto Schedule::get_next_sync_batch() -> std::pair<
