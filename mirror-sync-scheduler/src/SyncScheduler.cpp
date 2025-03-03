@@ -76,8 +76,7 @@ auto SyncScheduler::load_json_config(const std::filesystem::path& file)
 
     if (!mirrorsConfigFile.good())
     {
-        static std::string errorMessage(BUFSIZ, '\0');
-        errorMessage.clear();
+        std::string errorMessage(BUFSIZ, '\0');
 
         throw std::runtime_error(std::format(
             "Failed to load config file {}! OS Error: {}",

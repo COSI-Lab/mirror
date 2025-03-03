@@ -18,7 +18,6 @@
 #include <cerrno>
 #include <chrono>
 #include <csignal>
-#include <cstdint>
 #include <cstdio>
 #include <cstdlib>
 #include <filesystem>
@@ -116,8 +115,7 @@ auto JobManager::get_child_process_ids() -> std::vector<::pid_t>
 
 auto JobManager::reap_processes() -> std::vector<::pid_t>
 {
-    static std::string errorMessage(BUFSIZ, '\0');
-    errorMessage.clear();
+    std::string errorMessage(BUFSIZ, '\0');
 
     static const ::pid_t syncSchedulerProcessID = ::getpid();
 
@@ -133,34 +131,44 @@ auto JobManager::reap_processes() -> std::vector<::pid_t>
             childProcessID
         );
 
-        int status = 0;
+        int            status       = 0;
+        const bool     isKnownJob   = m_ActiveJobs.contains(childProcessID);
+        constexpr auto JOB_TIMEOUT  = std::chrono::hours(6);
+        const auto     syncDuration = std::chrono::system_clock::now()
+                                - m_ActiveJobs.at(childProcessID).startTime;
 
         // NOLINTNEXTLINE(misc-include-cleaner)
-        const ::pid_t waitReturn = ::waitpid(childProcessID, &status, WNOHANG);
-
-        const bool isKnownJob = m_ActiveJobs.contains(childProcessID);
-
-        if (waitReturn == 0) // Process still running
+        switch (::waitpid(childProcessID, &status, WNOHANG))
         {
+        case -1: // waitpid() failed
+            spdlog::error(
+                "waitpid() returned -1 for process with pid: {}! Error "
+                "message: {}",
+                ::strerror_r(errno, errorMessage.data(), errorMessage.size()),
+                childProcessID
+            );
+            completedJobs.emplace_back(childProcessID);
+            break;
+
+        case 0: // Process still running
             if (!isKnownJob)
             {
-                continue;
+                break;
             }
 
-            constexpr std::uint8_t hoursBeforeTimeout = 6;
-            const auto syncDuration = std::chrono::system_clock::now()
-                                    - m_ActiveJobs.at(childProcessID).startTime;
-            if (syncDuration < std::chrono::hours(hoursBeforeTimeout))
+            if (syncDuration < JOB_TIMEOUT)
             {
-                continue;
+                break;
             }
 
             spdlog::warn(
-                "Project {} has been syncing for at least {} hour{}. Process "
+                "Project {} has been syncing for at least {} hour{}. "
+                "Process "
                 "may be hanging, attempting to send SIGTERM. (pid: {})",
                 m_ActiveJobs.at(childProcessID).jobName,
-                hoursBeforeTimeout,
-                (hoursBeforeTimeout == 1 ? "" : "s"), // if not one hour, plural
+                JOB_TIMEOUT.count(),
+                (JOB_TIMEOUT.count() == 1 ? "" : "s"
+                ), // if not one hour, plural
                 childProcessID
             );
 
@@ -170,33 +178,21 @@ auto JobManager::reap_processes() -> std::vector<::pid_t>
             }
 
             completedJobs.emplace_back(childProcessID);
-            continue;
-        }
-        else if (waitReturn == -1) // waitpid() failed
-        {
-            spdlog::error(
-                "waitpid() returned -1 for process with pid: {}! Error "
-                "message: {}",
-                ::strerror_r(errno, errorMessage.data(), errorMessage.size()),
-                childProcessID
-            );
-            completedJobs.emplace_back(childProcessID);
-            continue;
-        }
+            break;
 
-        const int exitStatus = WEXITSTATUS(status);
+        default:
+            const int exitStatus = WEXITSTATUS(status);
 
-        if (isKnownJob)
-        {
-            if (exitStatus == EXIT_SUCCESS)
+            if (isKnownJob && exitStatus == EXIT_SUCCESS)
             {
                 spdlog::info(
                     "Project {} successfully synced! (pid: {})",
                     m_ActiveJobs.at(childProcessID).jobName,
                     childProcessID
                 );
+                completedJobs.emplace_back(childProcessID);
             }
-            else
+            else if (isKnownJob && exitStatus != EXIT_SUCCESS)
             {
                 spdlog::warn(
                     "Project {} failed to sync! Exit code: {} (pid: {})",
@@ -204,13 +200,9 @@ auto JobManager::reap_processes() -> std::vector<::pid_t>
                     exitStatus,
                     childProcessID
                 );
+                completedJobs.emplace_back(childProcessID);
             }
-
-            completedJobs.emplace_back(childProcessID);
-        }
-        else
-        {
-            if (exitStatus == EXIT_SUCCESS)
+            else if (!isKnownJob && exitStatus == EXIT_SUCCESS)
             {
                 spdlog::info(
                     "Reaped successful unregistered child process with pid {}",
@@ -238,8 +230,7 @@ auto JobManager::interrupt_job(const ::pid_t processID) -> bool
 
     if (killReturn != 0)
     {
-        static std::string errorMessage(BUFSIZ, '\0');
-        errorMessage.clear();
+        std::string errorMessage(BUFSIZ, '\0');
 
         spdlog::error(
             "Failed to send process {} a SIGTERM! Error message: {}",
@@ -252,11 +243,11 @@ auto JobManager::interrupt_job(const ::pid_t processID) -> bool
 
     spdlog::debug("Successfully sent process {} a SIGTERM", processID);
 
-    constexpr auto sigtermTimeout = std::chrono::seconds(30);
-    const auto     start          = std::chrono::system_clock::now();
-    auto           now            = std::chrono::system_clock::now();
+    constexpr auto SIGTERM_TIMEOUT = std::chrono::seconds(30);
+    const auto     start           = std::chrono::system_clock::now();
+    auto           now             = start;
 
-    while ((now - start) < sigtermTimeout)
+    while ((now - start) < SIGTERM_TIMEOUT)
     {
         const int waitReturn = ::waitpid(processID, nullptr, WNOHANG);
 
@@ -298,8 +289,7 @@ auto JobManager::kill_job(const ::pid_t processID) -> void
     }
     else
     {
-        static std::string errorMessage(BUFSIZ, '\0');
-        errorMessage.clear();
+        std::string errorMessage(BUFSIZ, '\0');
 
         spdlog::error(
             "Failed to send process {} a SIGKILL! Error message: {}",
@@ -399,8 +389,7 @@ auto JobManager::start_job(
 
     if (status != 0)
     {
-        static std::string errorMessage(BUFSIZ, '\0');
-        errorMessage.clear();
+        std::string errorMessage(BUFSIZ, '\0');
 
         spdlog::warn(
             "Failed to create pipe for child stdout while syncing project {}! "
@@ -414,8 +403,7 @@ auto JobManager::start_job(
 
     if (status != 0)
     {
-        static std::string errorMessage(BUFSIZ, '\0');
-        errorMessage.clear();
+        std::string errorMessage(BUFSIZ, '\0');
 
         spdlog::warn(
             "Failed to create pipe for child stderr while syncing project {}! "
@@ -466,8 +454,7 @@ auto JobManager::start_job(
         ::execv(argv.at(0), argv.data());
 
         // If we get here `::execv()` failed
-        static std::string errorMessage(BUFSIZ, '\0');
-        errorMessage.clear();
+        std::string errorMessage(BUFSIZ, '\0');
 
         spdlog::error(
             "Call to execv() failed while trying to sync {}! Error message: {}",
@@ -485,8 +472,7 @@ auto JobManager::start_job(
     }
     else if (pid == -1)
     {
-        static std::string errorMessage(BUFSIZ, '\0');
-        errorMessage.clear();
+        std::string errorMessage(BUFSIZ, '\0');
 
         spdlog::error(
             "Failed to fork process for project `{}`! Error message: {}",
