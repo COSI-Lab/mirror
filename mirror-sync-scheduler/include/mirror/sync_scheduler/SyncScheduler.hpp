@@ -28,16 +28,22 @@ class SyncScheduler
 {
   public: // Constructors
     SyncScheduler();
+    SyncScheduler(SyncScheduler&) = delete;
+    SyncScheduler(SyncScheduler&&) = delete;
+    auto operator=(SyncScheduler&) -> SyncScheduler = delete;
+    auto operator=(SyncScheduler&&) -> SyncScheduler = delete;
 
   public: // Methods
     auto run() -> void;
 
-  private:
-    static auto load_json_config(const std::filesystem::path& file)
-        -> nlohmann::json;
-    static auto generate_project_catalogue(const nlohmann::json& mirrors)
-        -> ProjectCatalogue;
-    auto start_sync(const std::string& projectName) -> bool;
+  private: // Methods
+  auto start_sync(const std::string& projectName) -> bool;
+    
+  private: // Static Methods
+  static auto load_json_config(const std::filesystem::path& file)
+      -> nlohmann::json;
+  static auto generate_project_catalogue(const nlohmann::json& mirrors)
+      -> ProjectCatalogue;
 
   private: // Members
     ProjectCatalogue m_ProjectCatalogue;
