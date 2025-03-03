@@ -425,13 +425,11 @@ auto JobManager::start_job(
     {
         // Close read end of the stdout pipe in the child process
         ::close(stdoutPipes.at(0));
-        //::dup2(stdoutPipes.at(1), STDOUT_FILENO);
+        ::dup2(stdoutPipes.at(1), STDOUT_FILENO);
 
         // Close read end of the stderr pipe in the child process
         ::close(stderrPipes.at(0));
-        //::dup2(stderrPipes.at(1), STDERR_FILENO);
-
-        std::string rsyncEnvVar = "";
+        ::dup2(stderrPipes.at(1), STDERR_FILENO);
 
         if (std::filesystem::exists(passwordFile)
             && std::filesystem::is_regular_file(passwordFile))
@@ -447,12 +445,10 @@ auto JobManager::start_job(
 
             passwordFileStream >> syncPassword;
 
-            rsyncEnvVar = std::format("RSYNC_PASSWORD={}", syncPassword);
-
             // Put rsync password into the child process' environment
             // NOLINTNEXTLINE(concurrency-mt-unsafe, misc-include-cleaner)
             spdlog::trace("Putting rsync password into child environment");
-            ::putenv(rsyncEnvVar.data());
+            ::setenv("RSYNC_PASSWORD", syncPassword.c_str());
         }
 
         // NOLINTBEGIN(*-include-cleaner)
@@ -462,10 +458,6 @@ auto JobManager::start_job(
         // NOLINTEND(*-include-cleaner)
 
         const std::array<char*, 4> argv = { argv0, argv1, argv2, nullptr };
-
-        assert(argv[0] != nullptr);
-        assert(argv[1] != nullptr);
-        assert(argv[2] != nullptr);
 
         spdlog::debug("Setting process group ID");
         ::setpgid(0, 0);
