@@ -458,13 +458,17 @@ auto JobManager::start_job(
             );
         }
 
+        //* ::strdup allocates memory with malloc. Typically this memory should
+        //* be freed. However, argv is supposed to have the same lifetime as the
+        //* process it belongs to, therefore the memory should never be freed
+        //* and we do not need to maintain a copy of the pointer to free it at a
+        //* later time
         // NOLINTBEGIN(*-include-cleaner)
-        auto* argv0 = ::strdup("/bin/sh");
-        auto* argv1 = ::strdup("-c");
-        auto* argv2 = ::strdup(command.data());
+        const std::array<char*, 4> argv { ::strdup("/bin/sh"),
+                                          ::strdup("-c"),
+                                          ::strdup(command.data()),
+                                          nullptr };
         // NOLINTEND(*-include-cleaner)
-
-        const std::array<char*, 4> argv = { argv0, argv1, argv2, nullptr };
 
         spdlog::debug("Setting process group ID");
         ::setpgid(0, 0);
@@ -481,13 +485,6 @@ auto JobManager::start_job(
             // NOLINTNEXTLINE(*-include-cleaner)
             ::strerror_r(errno, errorMessage.data(), errorMessage.size())
         );
-
-        // Keep memory from leaking in the event that ::execv fails
-        // NOLINTBEGIN(*-no-malloc, *-owning-memory)
-        std::free(argv0);
-        std::free(argv1);
-        std::free(argv2);
-        // NOLINTEND(*-no-malloc, *-owning-memory)
 
         // NOLINTNEXTLINE(*-mt-unsafe)
         std::exit(EXIT_FAILURE);
