@@ -458,8 +458,7 @@ auto JobManager::start_job(
         auto* argv1 = ::strdup("-c");
 
         const std::array<char*, 3> argv = { argv0, argv1, command.data() };
-
-        const ::pid_t currentProcessID = ::getpid();
+        const ::pid_t              currentProcessID = ::getpid();
         ::setpgid(currentProcessID, currentProcessID);
         ::execv(argv.at(0), argv.data());
 
@@ -479,7 +478,7 @@ auto JobManager::start_job(
         ::free(argv1);
         // NOLINTEND(*-no-malloc, *-owning-memory)
 
-        return false;
+        ::exit(EXIT_FAILURE);
     }
     // NOLINTNEXTLINE(*-else-after-return)
     else if (pid == -1)
