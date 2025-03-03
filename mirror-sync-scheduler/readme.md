@@ -1,4 +1,4 @@
-﻿# Sync Scheduler
+# Sync Scheduler
 
 The Sync Scheduler is in charge of updating the repositories for all of the
 projects within [](https://mirror.clarkson.edu/projects). To do this it reads
