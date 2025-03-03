@@ -462,6 +462,10 @@ auto JobManager::start_job(
 
         const std::array<char*, 3> argv = { argv0, argv1, command.data() };
 
+        assert(argv[0] != nullptr);
+        assert(argv[1] != nullptr);
+        assert(argv[2] != nullptr);
+
         spdlog::debug("Setting process group ID");
         ::setpgid(0, 0);
 
