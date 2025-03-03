@@ -118,8 +118,7 @@ auto JobManager::reap_processes() -> std::vector<::pid_t>
 
     static const ::pid_t syncSchedulerProcessID = ::getpid();
 
-    static std::vector<::pid_t> completedJobs;
-    completedJobs.clear();
+    std::vector<::pid_t> completedJobs;
     completedJobs.reserve(m_ActiveJobs.size());
 
     const std::lock_guard<std::mutex> JobLock(m_JobMutex);
