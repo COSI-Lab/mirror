@@ -425,11 +425,11 @@ auto JobManager::start_job(
     {
         // Close read end of the stdout pipe in the child process
         ::close(stdoutPipes.at(0));
-        ::dup2(stdoutPipes.at(1), STDOUT_FILENO);
+        //::dup2(stdoutPipes.at(1), STDOUT_FILENO);
 
         // Close read end of the stderr pipe in the child process
         ::close(stderrPipes.at(0));
-        ::dup2(stderrPipes.at(1), STDERR_FILENO);
+        //::dup2(stderrPipes.at(1), STDERR_FILENO);
 
         std::string rsyncEnvVar = "";
 
