@@ -440,15 +440,16 @@ auto JobManager::start_job(
             if (!passwordFileStream.good())
             {
                 spdlog::error("Failed to read password file for {}!", jobName);
-                ::exit(EXIT_FAILURE);
+                // NOLINTNEXTLINE(*-mt-unsafe)
+                std::exit(EXIT_FAILURE);
             }
 
             passwordFileStream >> syncPassword;
 
             // Put rsync password into the child process' environment
-            // NOLINTNEXTLINE(concurrency-mt-unsafe, misc-include-cleaner)
             spdlog::trace("Putting rsync password into child environment");
-            ::setenv("RSYNC_PASSWORD", syncPassword.c_str());
+            // NOLINTNEXTLINE(*-mt-unsafe, *-include-cleaner)
+            ::setenv("RSYNC_PASSWORD", syncPassword.c_str(), false);
         }
 
         // NOLINTBEGIN(*-include-cleaner)
@@ -477,12 +478,13 @@ auto JobManager::start_job(
 
         // Keep memory from leaking in the event that ::execv fails
         // NOLINTBEGIN(*-no-malloc, *-owning-memory)
-        ::free(argv0);
-        ::free(argv1);
-        ::free(argv2);
+        std::free(argv0);
+        std::free(argv1);
+        std::free(argv2);
         // NOLINTEND(*-no-malloc, *-owning-memory)
 
-        ::exit(EXIT_FAILURE);
+        // NOLINTNEXTLINE(*-mt-unsafe)
+        std::exit(EXIT_FAILURE);
     }
     // NOLINTNEXTLINE(*-else-after-return)
     else if (pid == -1)
