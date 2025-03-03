@@ -42,7 +42,8 @@ SyncDetails::SyncDetails(const nlohmann::json& project)
         ));
     }
 
-    std::tie(m_SyncMethod, m_SyncConfig) = generate_sync_config(project);
+    std::tie(m_SyncMethod, m_SyncConfig)
+        = SyncDetails::generate_sync_config(project);
 }
 
 auto SyncDetails::compose_rsync_command(
@@ -84,8 +85,9 @@ auto SyncDetails::compose_rsync_command(
 auto SyncDetails::generate_sync_config(const nlohmann::json& project)
     -> std::pair<SyncMethod, nlohmann::json>
 {
-    return project.contains("rsync") ? generate_rsync_config(project)
-                                     : generate_script_config(project);
+    return project.contains("rsync")
+             ? SyncDetails::generate_rsync_config(project)
+             : SyncDetails::generate_script_config(project);
 }
 
 auto SyncDetails::generate_rsync_config(const nlohmann::json& project)
@@ -94,20 +96,23 @@ auto SyncDetails::generate_rsync_config(const nlohmann::json& project)
     nlohmann::json config;
 
     config.emplace("syncs_per_day", project.at("rsync").at("syncs_per_day"));
-    config.emplace("primary", compose_rsync_command(project.at("rsync")));
+    config.emplace(
+        "primary",
+        SyncDetails::compose_rsync_command(project.at("rsync"))
+    );
 
     if (project.at("rsync").contains("second"))
     {
         config.emplace(
             "secondary",
-            compose_rsync_command(project.at("rsync"), "second")
+            SyncDetails::compose_rsync_command(project.at("rsync"), "second")
         );
     }
     if (project.at("rsync").contains("third"))
     {
         config.emplace(
             "tertiary",
-            compose_rsync_command(project.at("rsync"), "third")
+            SyncDetails::compose_rsync_command(project.at("rsync"), "third")
         );
     }
 

@@ -13,13 +13,12 @@
 #include <cstdint>
 #include <cstdio>
 #include <cstdlib>
+#include <cstring>
 #include <filesystem>
 #include <format>
 #include <fstream>
 #include <stdexcept>
 #include <string>
-// NOLINTNEXTLINE(*-deprecated-headers, llvm-include-order)
-#include <string.h> // Required for `::strerror_r`. Not available in `cstring`
 #include <thread>
 #include <utility>
 
@@ -40,14 +39,15 @@ namespace mirror::sync_scheduler
 {
 SyncScheduler::SyncScheduler()
 try
-    : m_ProjectCatalogue(
-          generate_project_catalogue(load_json_config("configs/mirrors.json")
-                                         .value("mirrors", nlohmann::json {}))
-      ),
+    : m_ProjectCatalogue(SyncScheduler::generate_project_catalogue(
+          SyncScheduler::load_json_config("configs/mirrors.json")
+              .value("mirrors", nlohmann::json())
+      )),
       m_Schedule(m_ProjectCatalogue),
       m_DryRun(false)
 {
-    auto config = load_json_config("configs/sync-scheduler.json");
+    auto config
+        = SyncScheduler::load_json_config("configs/sync-scheduler.json");
 
     try
     {
@@ -81,6 +81,7 @@ auto SyncScheduler::load_json_config(const std::filesystem::path& file)
         throw std::runtime_error(std::format(
             "Failed to load config file {}! OS Error: {}",
             file.filename().string(),
+            // NOLINTNEXTLINE(*-include-cleaner)
             ::strerror_r(errno, errorMessage.data(), errorMessage.size())
         ));
     }
@@ -134,8 +135,9 @@ auto SyncScheduler::start_sync(const std::string& projectName) -> bool
 
     spdlog::trace(syncConfig.dump());
 
-    if (syncDetails.get_sync_method() == SyncMethod::RSYNC)
+    switch (syncDetails.get_sync_method())
     {
+    case SyncMethod::RSYNC:
         startSuccessful = m_JobManager.start_job(
             projectName,
             syncConfig.at("primary"),
@@ -144,7 +146,7 @@ auto SyncScheduler::start_sync(const std::string& projectName) -> bool
 
         if (syncConfig.contains("secondary") && startSuccessful)
         {
-            startSuccessful = m_JobManager.start_job(
+            m_JobManager.start_job(
                 std::format("{}_secondary", projectName),
                 syncConfig.at("secondary"),
                 syncDetails.get_password_file()
@@ -159,17 +161,17 @@ auto SyncScheduler::start_sync(const std::string& projectName) -> bool
                 syncDetails.get_password_file()
             );
         }
-    }
-    else if (syncDetails.get_sync_method() == SyncMethod::SCRIPT)
-    {
+        break;
+
+    case SyncMethod::SCRIPT:
         startSuccessful = m_JobManager.start_job(
             projectName,
             syncConfig.at("command"),
             syncDetails.get_password_file()
         );
-    }
-    else
-    {
+        break;
+
+    default:
         spdlog::error("Unrecognized sync method!");
         return false;
     }
@@ -182,6 +184,7 @@ auto SyncScheduler::start_sync(const std::string& projectName) -> bool
     {
         spdlog::warn("Failed to start sync for {}", projectName);
     }
+
     return startSuccessful;
 }
 
@@ -209,7 +212,7 @@ auto SyncScheduler::run() -> void
 
                 if (m_ProjectCatalogue.contains(projectName))
                 {
-                    if (start_sync(projectName))
+                    if (SyncScheduler::start_sync(projectName))
                     {
                         socket.send(
                             zmq::message_t(std::format(
@@ -262,7 +265,7 @@ auto SyncScheduler::run() -> void
 
         for (const auto& projectName : projectsToSync)
         {
-            start_sync(projectName);
+            SyncScheduler::start_sync(projectName);
         }
     }
 

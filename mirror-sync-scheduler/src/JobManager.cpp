@@ -20,6 +20,7 @@
 #include <csignal>
 #include <cstdio>
 #include <cstdlib>
+#include <cstring>
 #include <filesystem>
 #include <format>
 #include <fstream>
@@ -27,8 +28,6 @@
 #include <mutex>
 #include <stop_token>
 #include <string>
-// NOLINTNEXTLINE(*-deprecated-headers, llvm-include-order)
-#include <string.h> // Required for `::strerror_r`. Not available in `cstring`
 #include <thread>
 #include <vector>
 
@@ -55,14 +54,14 @@ JobManager::JobManager()
                 if (stopToken.stop_requested())
                 {
                     spdlog::info("Process reaper thread stop requested");
-                    kill_all_jobs();
+                    this->kill_all_jobs();
 
                     return;
                 }
 
                 auto completedJobs = reap_processes();
 
-                deregister_jobs(completedJobs);
+                this->deregister_jobs(completedJobs);
                 completedJobs.clear();
             }
         }
@@ -124,7 +123,7 @@ auto JobManager::reap_processes() -> std::vector<::pid_t>
     completedJobs.reserve(m_ActiveJobs.size());
 
     const std::lock_guard<std::mutex> JobLock(m_JobMutex);
-    for (const ::pid_t childProcessID : get_child_process_ids())
+    for (const ::pid_t childProcessID : JobManager::get_child_process_ids())
     {
         spdlog::trace(
             "Attempting to wait on process with pid {}",
@@ -144,6 +143,7 @@ auto JobManager::reap_processes() -> std::vector<::pid_t>
             spdlog::error(
                 "waitpid() returned -1 for process with pid: {}! Error "
                 "message: {}",
+                // NOLINTNEXTLINE(*-include-cleaner)
                 ::strerror_r(errno, errorMessage.data(), errorMessage.size()),
                 childProcessID
             );
@@ -167,20 +167,21 @@ auto JobManager::reap_processes() -> std::vector<::pid_t>
                 "may be hanging, attempting to send SIGTERM. (pid: {})",
                 m_ActiveJobs.at(childProcessID).jobName,
                 JOB_TIMEOUT.count(),
-                (JOB_TIMEOUT.count() == 1 ? "" : "s"
-                ), // if not one hour, plural
+                // if not one hour, plural
+                (JOB_TIMEOUT.count() == 1 ? "" : "s"),
                 childProcessID
             );
 
-            if (!interrupt_job(childProcessID))
+            if (!JobManager::interrupt_job(childProcessID))
             {
-                kill_job(childProcessID);
+                JobManager::kill_job(childProcessID);
             }
 
             completedJobs.emplace_back(childProcessID);
             break;
 
         default:
+            // NOLINTNEXTLINE(*-include-cleaner)
             const int exitStatus = WEXITSTATUS(status);
 
             if (isKnownJob && exitStatus == EXIT_SUCCESS)
@@ -235,6 +236,7 @@ auto JobManager::interrupt_job(const ::pid_t processID) -> bool
         spdlog::error(
             "Failed to send process {} a SIGTERM! Error message: {}",
             processID,
+            // NOLINTNEXTLINE(*-include-cleaner)
             ::strerror_r(errno, errorMessage.data(), errorMessage.size())
         );
 
@@ -257,6 +259,7 @@ auto JobManager::interrupt_job(const ::pid_t processID) -> bool
             return true;
         }
 
+        // NOLINTNEXTLINE(*-avoid-magic-numbers)
         std::this_thread::sleep_for(std::chrono::milliseconds(100));
 
         now = std::chrono::system_clock::now();
@@ -294,6 +297,7 @@ auto JobManager::kill_job(const ::pid_t processID) -> void
         spdlog::error(
             "Failed to send process {} a SIGKILL! Error message: {}",
             processID,
+            // NOLINTNEXTLINE(*-include-cleaner)
             ::strerror_r(errno, errorMessage.data(), errorMessage.size())
         );
     }
@@ -317,7 +321,7 @@ auto JobManager::kill_all_jobs() -> void
     const std::lock_guard<std::mutex> jobLock(m_JobMutex);
     for ([[maybe_unused]] const auto& [processID, jobDetails] : m_ActiveJobs)
     {
-        kill_job(processID);
+        JobManager::kill_job(processID);
     }
 
     spdlog::info("All active syncs have been killed!");
@@ -372,7 +376,7 @@ auto JobManager::start_job(
 ) -> bool
 // NOLINTEND(*-easily-swappable-parameters)
 {
-    if (job_is_running(jobName))
+    if (this->job_is_running(jobName))
     {
         spdlog::warn(
             "A job with the name \"{}\" already exists! Not starting a "
@@ -395,6 +399,7 @@ auto JobManager::start_job(
             "Failed to create pipe for child stdout while syncing project {}! "
             "Error message: {}",
             jobName,
+            // NOLINTNEXTLINE(*-include-cleaner)
             ::strerror_r(errno, errorMessage.data(), errorMessage.size())
         );
     }
@@ -409,6 +414,7 @@ auto JobManager::start_job(
             "Failed to create pipe for child stderr while syncing project {}! "
             "Error message: {}",
             jobName,
+            // NOLINTNEXTLINE(*-include-cleaner)
             ::strerror_r(errno, errorMessage.data(), errorMessage.size())
         );
     }
@@ -439,17 +445,21 @@ auto JobManager::start_job(
 
             passwordFileStream >> syncPassword;
 
+            auto rsyncEnvVar = std::format("RSYNC_PASSWORD={}", syncPassword);
+
             // Put rsync password into the child process' environment
             // NOLINTNEXTLINE(concurrency-mt-unsafe, misc-include-cleaner)
-            ::putenv(std::format("RSYNC_PASSWORD={}", syncPassword).data());
+            ::putenv(rsyncEnvVar.data());
         }
 
+        // NOLINTNEXTLINE(*-include-cleaner)
         auto* argv0 = ::strdup("/bin/sh");
+        // NOLINTNEXTLINE(*-include-cleaner)
         auto* argv1 = ::strdup("-c");
 
         const std::array<char*, 3> argv = { argv0, argv1, command.data() };
 
-        const ::pid_t currentProcessID = getpid();
+        const ::pid_t currentProcessID = ::getpid();
         ::setpgid(currentProcessID, currentProcessID);
         ::execv(argv.at(0), argv.data());
 
@@ -459,10 +469,11 @@ auto JobManager::start_job(
         spdlog::error(
             "Call to execv() failed while trying to sync {}! Error message: {}",
             jobName,
+            // NOLINTNEXTLINE(*-include-cleaner)
             ::strerror_r(errno, errorMessage.data(), errorMessage.size())
         );
 
-        // Keep memory from leaking in the event that exec fails
+        // Keep memory from leaking in the event that ::execv fails
         // NOLINTBEGIN(*-no-malloc, *-owning-memory)
         ::free(argv0);
         ::free(argv1);
@@ -470,6 +481,7 @@ auto JobManager::start_job(
 
         return false;
     }
+    // NOLINTNEXTLINE(*-else-after-return)
     else if (pid == -1)
     {
         std::string errorMessage(BUFSIZ, '\0');
@@ -477,6 +489,7 @@ auto JobManager::start_job(
         spdlog::error(
             "Failed to fork process for project `{}`! Error message: {}",
             jobName,
+            // NOLINTNEXTLINE(*-include-cleaner)
             ::strerror_r(errno, errorMessage.data(), errorMessage.size())
         );
         return false;
@@ -488,7 +501,7 @@ auto JobManager::start_job(
     // Close write end of the stderr pipe in the parent process
     ::close(stderrPipes.at(1));
 
-    register_job(jobName, pid, stdoutPipes.at(1), stderrPipes.at(1));
+    this->register_job(jobName, pid, stdoutPipes.at(1), stderrPipes.at(1));
     return true;
 }
 } // namespace mirror::sync_scheduler

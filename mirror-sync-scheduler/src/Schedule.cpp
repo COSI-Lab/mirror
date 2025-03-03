@@ -30,11 +30,11 @@ namespace mirror::sync_scheduler
 Schedule::Schedule(const ProjectCatalogue& projects)
     : m_SyncLCM(1)
 {
-    build(projects);
+    this->build(projects);
 
     try
     {
-        verify(projects);
+        this->verify(projects);
     }
     catch (std::runtime_error& re)
     {
