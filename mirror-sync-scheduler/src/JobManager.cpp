@@ -461,7 +461,7 @@ auto JobManager::start_job(
         auto* argv2 = ::strdup(command.data());
         // NOLINTEND(*-include-cleaner)
 
-        const std::array<char*, 3> argv = { argv0, argv1, argv2 };
+        const std::array<char*, 4> argv = { argv0, argv1, argv2, nullptr };
 
         assert(argv[0] != nullptr);
         assert(argv[1] != nullptr);
