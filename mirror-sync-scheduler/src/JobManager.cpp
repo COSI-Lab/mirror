@@ -431,6 +431,8 @@ auto JobManager::start_job(
         ::close(stderrPipes.at(0));
         ::dup2(stderrPipes.at(1), STDERR_FILENO);
 
+        std::string rsyncEnvVar = "";
+
         if (std::filesystem::exists(passwordFile)
             && std::filesystem::is_regular_file(passwordFile))
         {
@@ -440,15 +442,16 @@ auto JobManager::start_job(
             if (!passwordFileStream.good())
             {
                 spdlog::error("Failed to read password file for {}!", jobName);
-                return false;
+                ::exit(EXIT_FAILURE);
             }
 
             passwordFileStream >> syncPassword;
 
-            auto rsyncEnvVar = std::format("RSYNC_PASSWORD={}", syncPassword);
+            rsyncEnvVar = std::format("RSYNC_PASSWORD={}", syncPassword);
 
             // Put rsync password into the child process' environment
             // NOLINTNEXTLINE(concurrency-mt-unsafe, misc-include-cleaner)
+            spdlog::trace("Putting rsync password into child environment");
             ::putenv(rsyncEnvVar.data());
         }
 
@@ -459,7 +462,10 @@ auto JobManager::start_job(
 
         const std::array<char*, 3> argv = { argv0, argv1, command.data() };
 
+        spdlog::debug("Setting process group ID");
         ::setpgid(0, 0);
+
+        spdlog::trace("Calling exec");
         ::execv(argv.at(0), argv.data());
 
         // If we get here `::execv()` failed
