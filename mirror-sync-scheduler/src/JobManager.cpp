@@ -455,12 +455,13 @@ auto JobManager::start_job(
             ::putenv(rsyncEnvVar.data());
         }
 
-        // NOLINTNEXTLINE(*-include-cleaner)
+        // NOLINTBEGIN(*-include-cleaner)
         auto* argv0 = ::strdup("/bin/sh");
-        // NOLINTNEXTLINE(*-include-cleaner)
         auto* argv1 = ::strdup("-c");
+        auto* argv2 = ::strdup(command.data());
+        // NOLINTEND(*-include-cleaner)
 
-        const std::array<char*, 3> argv = { argv0, argv1, command.data() };
+        const std::array<char*, 3> argv = { argv0, argv1, argv2 };
 
         assert(argv[0] != nullptr);
         assert(argv[1] != nullptr);
@@ -486,6 +487,7 @@ auto JobManager::start_job(
         // NOLINTBEGIN(*-no-malloc, *-owning-memory)
         ::free(argv0);
         ::free(argv1);
+        ::free(argv2);
         // NOLINTEND(*-no-malloc, *-owning-memory)
 
         ::exit(EXIT_FAILURE);
