@@ -458,8 +458,8 @@ auto JobManager::start_job(
         auto* argv1 = ::strdup("-c");
 
         const std::array<char*, 3> argv = { argv0, argv1, command.data() };
-        const ::pid_t              currentProcessID = ::getpid();
-        ::setpgid(currentProcessID, currentProcessID);
+
+        ::setpgid(0, 0);
         ::execv(argv.at(0), argv.data());
 
         // If we get here `::execv()` failed
