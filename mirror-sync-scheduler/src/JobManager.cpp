@@ -451,7 +451,11 @@ auto JobManager::start_job(
             // Put rsync password into the child process' environment
             spdlog::trace("Putting rsync password into child environment");
             // NOLINTNEXTLINE(*-mt-unsafe, *-include-cleaner)
-            ::setenv("RSYNC_PASSWORD", syncPassword.c_str(), false);
+            ::setenv(
+                "RSYNC_PASSWORD",
+                syncPassword.c_str(),
+                static_cast<int>(false)
+            );
         }
 
         // NOLINTBEGIN(*-include-cleaner)
