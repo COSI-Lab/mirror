@@ -16,8 +16,8 @@ import java.util.concurrent.TimeUnit;
 public class MirrorJsonValidator {
 
 	private static final JsonSchema SCHEMA = JsonSchemaFactory.getInstance(SpecVersion.VersionFlag.V7)
-			.getSchema(new File("config/mirrors.schema.json").getAbsoluteFile().toURI());
-	private static final Path CONFIG_PATH = Paths.get("config");
+			.getSchema(new File("configs/mirrors.schema.json").getAbsoluteFile().toURI());
+	private static final Path CONFIG_PATH = Paths.get("configs");
 	private static final File MIRRORS_JSON = new File(CONFIG_PATH + "/mirrors.json");
 
 	public static void main(String[] args) {
@@ -34,15 +34,11 @@ public class MirrorJsonValidator {
 		while(true) {
 			try {
 				key = watcher.take(); // Wait for file to be changed
-			} catch (InterruptedException e) {
-				throw new RuntimeException(e);
-			}
-
-			try {
 				TimeUnit.MILLISECONDS.sleep(50); // Prevents duplicate events (from updating metadata)
 			} catch (InterruptedException e) {
 				throw new RuntimeException(e);
 			}
+
 			key.pollEvents();
 			key.reset();
 
