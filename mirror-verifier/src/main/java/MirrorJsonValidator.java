@@ -15,13 +15,41 @@ import java.util.concurrent.TimeUnit;
 
 public class MirrorJsonValidator {
 
-	private static final JsonSchema SCHEMA = JsonSchemaFactory.getInstance(SpecVersion.VersionFlag.V7)
-			.getSchema(new File("configs/mirrors.schema.json").getAbsoluteFile().toURI());
 	private static final Path CONFIG_PATH = Paths.get("configs");
+	private static final JsonSchema SCHEMA = JsonSchemaFactory.getInstance(SpecVersion.VersionFlag.V7)
+			.getSchema(new File(CONFIG_PATH + "/mirrors.schema.json").getAbsoluteFile().toURI());
 	private static final File MIRRORS_JSON = new File(CONFIG_PATH + "/mirrors.json");
+	private static final ZContext CONTEXT = new ZContext();
+	private static final ZMQ.Socket PUB_SOCKET = CONTEXT.createSocket(SocketType.PUB);
+	private static final ZMQ.Socket REP_SOCKET = CONTEXT.createSocket(SocketType.REP);
+
+	static {
+		PUB_SOCKET.bind("tcp://*:27887");
+		REP_SOCKET.bind("tcp://*:27886");
+	}
 
 	public static void main(String[] args) {
+		new Thread(MirrorJsonValidator::sendUpdates).start();
+		new Thread(MirrorJsonValidator::answerRequests).start();
+	}
 
+	public static void answerRequests() {
+		while (!Thread.currentThread().isInterrupted()) {
+			REP_SOCKET.recv(); // Block until a message is received
+
+			if (!ValidateMirrorJson()) {
+				System.out.println("Problems were found in mirrors.json, but replying to initial request anyway");
+			}
+
+			try {
+				SendZMQ(REP_SOCKET);
+			} catch (IOException e) {
+				System.out.println("Got IOException reading mirrors.json when responding to initial request");
+			}
+		}
+	}
+
+	public static void sendUpdates() {
 		WatchService watcher;
 		try {
 			watcher = FileSystems.getDefault().newWatchService();
@@ -31,7 +59,7 @@ public class MirrorJsonValidator {
 		}
 
 		WatchKey key;
-		while(true) {
+		while(!Thread.currentThread().isInterrupted()) {
 			try {
 				key = watcher.take(); // Wait for file to be changed
 				TimeUnit.MILLISECONDS.sleep(50); // Prevents duplicate events (from updating metadata)
@@ -44,10 +72,9 @@ public class MirrorJsonValidator {
 
 			if (ValidateMirrorJson()) { // Only send if valid
 				try {
-					SendZMQ(Files.readString(MIRRORS_JSON.toPath()));
+					SendZMQ(PUB_SOCKET);
 				} catch (IOException e) {
-					System.out.println("IOException reading mirrors.json");
-					throw new RuntimeException(e);
+					System.out.println("Failed to read mirrors.json from file");
 				}
 			}
 		}
@@ -82,16 +109,11 @@ public class MirrorJsonValidator {
 		}
 	}
 
-	private static final ZMQ.Socket SOCKET = new ZContext().createSocket(SocketType.PUB);
-	static {
-		SOCKET.bind("tcp://*:27887");
-	}
-
 	/**
-	 * Sends new mirrors.json as string via ZMQ, topic "Config", port 27887
+	 * Sends mirrors.json as string via ZMQ
 	 */
-	private static void SendZMQ(String mirrorsJson) {
-		SOCKET.sendMore("Config");
-		SOCKET.send(mirrorsJson.getBytes(ZMQ.CHARSET));
+	private static void SendZMQ(ZMQ.Socket socket) throws IOException {
+		if (socket.getSocketType().equals(SocketType.PUB)) { PUB_SOCKET.sendMore("Config"); }
+		socket.send(Files.readString(MIRRORS_JSON.toPath()));
 	}
 }
