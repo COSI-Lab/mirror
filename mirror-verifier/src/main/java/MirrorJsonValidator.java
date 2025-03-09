@@ -113,7 +113,7 @@ public class MirrorJsonValidator {
 	 * Sends mirrors.json as string via ZMQ
 	 */
 	private static void SendZMQ(ZMQ.Socket socket) throws IOException {
-		if (socket.getSocketType().equals(SocketType.PUB)) { PUB_SOCKET.sendMore("Config"); }
+		if (socket.getSocketType().equals(SocketType.PUB)) { socket.sendMore("Config"); }
 		socket.send(Files.readString(MIRRORS_JSON.toPath()));
 	}
 }
