@@ -41,8 +41,19 @@ namespace mirror::sync_scheduler
 {
 JobManager::JobManager()
 {
-    m_ProcessReaper = std::jthread(
-        [this](const std::stop_token& stopToken) -> void
+    m_ProcessReaper = std::jthread(&JobManager::process_reaper, this);
+}
+
+JobManager::~JobManager()
+{
+    spdlog::info("Joining process reaper thread");
+    m_ProcessReaper.request_stop();
+    m_SleepVariable.notify_all();
+    m_ProcessReaper.join();
+    spdlog::info("Process reaper thread joined!");
+}
+
+auto JobManager::process_reaper(const std::stop_token& stopToken) -> void
         {
             while (true)
             {
@@ -65,17 +76,6 @@ JobManager::JobManager()
                 completedJobs.clear();
             }
         }
-    );
-}
-
-JobManager::~JobManager()
-{
-    spdlog::info("Joining process reaper thread");
-    m_ProcessReaper.request_stop();
-    m_SleepVariable.notify_all();
-    m_ProcessReaper.join();
-    spdlog::info("Process reaper thread joined!");
-}
 
 auto JobManager::get_child_process_ids(const ::pid_t processID = ::getpid())
     -> std::vector<::pid_t>
