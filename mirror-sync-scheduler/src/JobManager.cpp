@@ -459,11 +459,11 @@ auto JobManager::start_job(
             );
         }
 
-        //* ::strdup allocates memory with malloc. Typically this memory should
-        //* be freed. However, argv is supposed to have the same lifetime as the
-        //* process it belongs to, therefore the memory should never be freed
-        //* and we do not need to maintain a copy of the pointer to free it at a
-        //* later time
+        //! ::strdup allocates memory with ::malloc. Typically this memory
+        //! should be ::free'd. However, argv is supposed to have the same
+        //! lifetime as the process it belongs to, therefore the memory should
+        //! never be freed and we do not need to maintain a copy of the pointer
+        //! to free it at a later time
         // NOLINTBEGIN(*-include-cleaner)
         const std::array<char*, 4> argv { ::strdup("/bin/sh"),
                                           ::strdup("-c"),
