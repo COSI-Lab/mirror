@@ -28,9 +28,9 @@ class JobManager
 {
   public: // Constructors
     JobManager();
-    JobManager(JobManager&) = delete;
-    JobManager(JobManager&&) = delete;
-    auto operator=(JobManager&) -> JobManager = delete;
+    JobManager(JobManager&)                    = delete;
+    JobManager(JobManager&&)                   = delete;
+    auto operator=(JobManager&) -> JobManager  = delete;
     auto operator=(JobManager&&) -> JobManager = delete;
 
     ~JobManager();
