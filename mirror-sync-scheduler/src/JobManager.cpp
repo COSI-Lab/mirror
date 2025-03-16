@@ -77,10 +77,11 @@ JobManager::~JobManager()
     spdlog::info("Process reaper thread joined!");
 }
 
-auto JobManager::get_child_process_ids() -> std::vector<::pid_t>
+auto JobManager::get_child_process_ids(const ::pid_t processID = ::getpid())
+    -> std::vector<::pid_t>
 {
     static const std::filesystem::path taskDirectory
-        = std::filesystem::absolute("/proc/self/task/");
+        = std::filesystem::absolute(std::format("/proc/{}/task/", processID));
 
     std::vector<::pid_t> childProcesses = {};
     for (const auto& item : std::filesystem::directory_iterator(taskDirectory))
