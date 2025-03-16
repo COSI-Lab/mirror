@@ -54,28 +54,28 @@ JobManager::~JobManager()
 }
 
 auto JobManager::process_reaper(const std::stop_token& stopToken) -> void
+{
+    while (true)
+    {
+        spdlog::trace("Process reaper thread going to sleep");
+        std::unique_lock<std::mutex> reaperLock(m_ReaperMutex);
+        m_SleepVariable.wait_for(reaperLock, std::chrono::minutes(1));
+        spdlog::trace("Process reaper thread woke up");
+
+        if (stopToken.stop_requested())
         {
-            while (true)
-            {
-                spdlog::trace("Process reaper thread going to sleep");
-                std::unique_lock<std::mutex> reaperLock(m_ReaperMutex);
-                m_SleepVariable.wait_for(reaperLock, std::chrono::minutes(1));
-                spdlog::trace("Process reaper thread woke up");
+            spdlog::info("Process reaper thread stop requested");
+            this->kill_all_jobs();
 
-                if (stopToken.stop_requested())
-                {
-                    spdlog::info("Process reaper thread stop requested");
-                    this->kill_all_jobs();
-
-                    return;
-                }
-
-                auto completedJobs = reap_processes();
-
-                this->deregister_jobs(completedJobs);
-                completedJobs.clear();
-            }
+            return;
         }
+
+        auto completedJobs = reap_processes();
+
+        this->deregister_jobs(completedJobs);
+        completedJobs.clear();
+    }
+}
 
 auto JobManager::get_child_process_ids(const ::pid_t processID = ::getpid())
     -> std::vector<::pid_t>
@@ -175,10 +175,7 @@ auto JobManager::reap_processes() -> std::vector<::pid_t>
                 childProcessID
             );
 
-            if (!JobManager::interrupt_job(childProcessID))
-            {
-                JobManager::kill_job(childProcessID);
-            }
+            JobManager::interrupt_job(childProcessID);
 
             completedJobs.emplace_back(childProcessID);
             break;
@@ -227,10 +224,21 @@ auto JobManager::reap_processes() -> std::vector<::pid_t>
     return completedJobs;
 }
 
-auto JobManager::interrupt_job(const ::pid_t processID) -> bool
+// NOLINTNEXTLINE(*-no-recursion)
+auto JobManager::interrupt_job(const ::pid_t processID) -> void
 {
+    // Interrupt child processes recursively. Starts with the grandest child and
+    // works its way back up to the direct decendant of the sync scheduler
+    //
+    // Base case: process with no children. `get_child_process_ids` will be an
+    // empty collection meaning nothing to iterate over
+    for (const ::pid_t childProcessID : JobManager::get_child_process_ids())
+    {
+        JobManager::interrupt_job(childProcessID);
+    }
+
     // NOLINTNEXTLINE(misc-include-cleaner)
-    const int killReturn = ::killpg(processID, SIGTERM);
+    const int killReturn = ::kill(processID, SIGTERM);
 
     if (killReturn != 0)
     {
@@ -243,7 +251,7 @@ auto JobManager::interrupt_job(const ::pid_t processID) -> bool
             ::strerror_r(errno, errorMessage.data(), errorMessage.size())
         );
 
-        return false;
+        return;
     }
 
     spdlog::debug("Successfully sent process {} a SIGTERM", processID);
@@ -259,7 +267,7 @@ auto JobManager::interrupt_job(const ::pid_t processID) -> bool
         if (waitReturn == processID)
         {
             spdlog::trace("Process {} successfully reaped", processID);
-            return true;
+            return;
         }
 
         // NOLINTNEXTLINE(*-avoid-magic-numbers)
@@ -269,7 +277,8 @@ auto JobManager::interrupt_job(const ::pid_t processID) -> bool
     }
 
     spdlog::error("Failed to terminate process {} with SIGTERM", processID);
-    return false;
+
+    JobManager::kill_job(processID);
 }
 
 auto JobManager::job_is_running(const std::string& jobName) -> bool
@@ -287,7 +296,7 @@ auto JobManager::job_is_running(const std::string& jobName) -> bool
 auto JobManager::kill_job(const ::pid_t processID) -> void
 {
     // NOLINTNEXTLINE(misc-include-cleaner)
-    const int killReturn = ::killpg(processID, SIGKILL);
+    const int killReturn = ::kill(processID, SIGKILL);
 
     if (killReturn == 0)
     {
