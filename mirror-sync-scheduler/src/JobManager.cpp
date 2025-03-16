@@ -270,8 +270,8 @@ auto JobManager::interrupt_job(const ::pid_t processID) -> void
             return;
         }
 
-        // NOLINTNEXTLINE(*-avoid-magic-numbers)
-        std::this_thread::sleep_for(std::chrono::milliseconds(100));
+        constexpr auto checkInterval = std::chrono::milliseconds(100);
+        std::this_thread::sleep_for(checkInterval);
 
         now = std::chrono::system_clock::now();
     }
