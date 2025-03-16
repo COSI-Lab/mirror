@@ -188,64 +188,62 @@ auto SyncScheduler::start_sync(const std::string& projectName) -> bool
     return startSuccessful;
 }
 
+auto SyncScheduler::manual_sync_loop() -> void
+{
+    zmq::context_t          socketContext {};
+    zmq::socket_t           socket { socketContext, zmq::socket_type::rep };
+    constexpr std::uint16_t MANUAL_SYNC_PORT = 9281;
+    socket.bind(std::format("tcp://*:{}", MANUAL_SYNC_PORT));
+
+    zmq::message_t syncRequest;
+
+    while (true)
+    {
+        [[maybe_unused]]
+        auto result
+            = socket.recv(syncRequest, zmq::recv_flags::none);
+        const std::string projectName = syncRequest.to_string();
+
+        spdlog::info("Manual sync requested for {}", projectName);
+
+        if (m_ProjectCatalogue.contains(projectName))
+        {
+            if (SyncScheduler::start_sync(projectName))
+            {
+                socket.send(
+                    zmq::message_t(
+                        std::format("SUCCESS: started sync for {}", projectName)
+                    ),
+                    zmq::send_flags::none
+                );
+                continue;
+            }
+
+            spdlog::error("Manual sync for {} failed", projectName);
+            socket.send(
+                zmq::message_t(std::format(
+                    "FAILURE: Failed to start sync for {}",
+                    projectName
+                )),
+                zmq::send_flags::none
+            );
+            continue;
+        }
+
+        spdlog::error("Project {} not found!", projectName);
+        socket.send(
+            zmq::message_t(
+                std::format("FAILURE: Project {} not found!", projectName)
+            ),
+            zmq::send_flags::none
+        );
+    }
+}
+
 auto SyncScheduler::run() -> void
 {
     spdlog::trace("Starting manual sync thread");
-    m_ManualSyncThread = std::jthread(
-        [this]() -> void
-        {
-            zmq::context_t socketContext {};
-            zmq::socket_t  socket { socketContext, zmq::socket_type::rep };
-            constexpr std::uint16_t MANUAL_SYNC_PORT = 9281;
-            socket.bind(std::format("tcp://*:{}", MANUAL_SYNC_PORT));
-
-            zmq::message_t syncRequest;
-
-            while (true)
-            {
-                [[maybe_unused]]
-                auto result
-                    = socket.recv(syncRequest, zmq::recv_flags::none);
-                const std::string projectName = syncRequest.to_string();
-
-                spdlog::info("Manual sync requested for {}.", projectName);
-
-                if (m_ProjectCatalogue.contains(projectName))
-                {
-                    if (SyncScheduler::start_sync(projectName))
-                    {
-                        socket.send(
-                            zmq::message_t(std::format(
-                                "SUCCESS: started sync for {}",
-                                projectName
-                            )),
-                            zmq::send_flags::none
-                        );
-                        continue;
-                    }
-
-                    spdlog::error("Manual sync for {} failed", projectName);
-                    socket.send(
-                        zmq::message_t(std::format(
-                            "FAILURE: Failed to start sync for {}",
-                            projectName
-                        )),
-                        zmq::send_flags::none
-                    );
-                    continue;
-                }
-
-                spdlog::error("Project {} not found!", projectName);
-                socket.send(
-                    zmq::message_t(std::format(
-                        "FAILURE: Project {} not found!",
-                        projectName
-                    )),
-                    zmq::send_flags::none
-                );
-            }
-        }
-    );
+    m_ManualSyncThread = std::jthread(&SyncScheduler::manual_sync_loop, this);
     spdlog::info("Manual sync thread started!");
 
     spdlog::trace("Entering the main running loop");
