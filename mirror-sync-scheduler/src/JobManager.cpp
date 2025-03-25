@@ -384,7 +384,7 @@ auto JobManager::deregister_jobs(const std::vector<::pid_t>& completedJobs)
 auto JobManager::start_job(
     const std::string&           jobName,
     std::string                  command,
-    const std::filesystem::path& passwordFile = {}
+    const std::filesystem::path& passwordFile
 ) -> bool
 // NOLINTEND(*-easily-swappable-parameters)
 {

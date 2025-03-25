@@ -8,11 +8,11 @@
 #include <mirror/sync_scheduler/SyncDetails.hpp>
 
 // Standard Library Includes
+#include <cstddef>
 #include <format>
 #include <stdexcept>
 #include <string>
-#include <tuple>
-#include <utility>
+#include <string_view>
 #include <vector>
 
 // Third Party Includes
@@ -21,7 +21,7 @@
 namespace mirror::sync_scheduler
 {
 SyncDetails::SyncDetails(const nlohmann::json& project)
-    : m_SyncMethod(SyncMethod::UNSET)
+    : m_SyncsPerDay(1)
 {
     if (project.contains("static"))
     {
@@ -42,94 +42,93 @@ SyncDetails::SyncDetails(const nlohmann::json& project)
         ));
     }
 
-    std::tie(m_SyncMethod, m_SyncConfig)
-        = SyncDetails::generate_sync_config(project);
+    SyncDetails::handle_sync_config(project);
 }
 
-auto SyncDetails::compose_rsync_command(
-    const nlohmann::json& rsyncConfig,
-    const std::string&    optionsKey = "options"
-) -> std::string
+auto SyncDetails::compose_rsync_commands(const nlohmann::json& rsyncConfig)
+    -> std::vector<std::string>
 {
-    const auto options = rsyncConfig.value(optionsKey, "");
+    std::vector<std::string> commands;
 
-    if (options.empty())
-    {
-        throw std::runtime_error(std::format(
-            "No Rsync options given for project `{}`; key `{}`",
-            rsyncConfig.value("name", ""),
-            optionsKey
-        ));
-    }
-
-    std::string command = std::format("/usr/bin/rsync {}", options);
+    using namespace std::string_view_literals;
+    constexpr auto rsyncExecutable = "/usr/bin/rsync"sv;
 
     const std::string user = rsyncConfig.value("user", "");
     const std::string host = rsyncConfig.value("host", "");
     const std::string src  = rsyncConfig.value("src", "");
     const std::string dest = rsyncConfig.value("dest", "");
 
-    if (!user.empty())
+    for (const std::string options : rsyncConfig.at("options"))
     {
-        command
-            = std::format("{} {}@{}::{} {}", command, user, host, src, dest);
+        if (options.empty())
+        {
+            throw std::runtime_error(std::format(
+                "Project {} contains invalid rsync config options",
+                rsyncConfig.value("name", "")
+            ));
+        }
+
+        if (!user.empty())
+        {
+            commands.emplace_back(std::format(
+                "{} {} {}@{}::{} {}",
+                rsyncExecutable,
+                options,
+                user,
+                host,
+                src,
+                dest
+            ));
+        }
+        else
+        {
+            commands.emplace_back(std::format(
+                "{} {} {}::{} {}",
+                rsyncExecutable,
+                options,
+                host,
+                src,
+                dest
+            ));
+        }
+    }
+
+    return commands;
+}
+
+auto SyncDetails::handle_sync_config(const nlohmann::json& project) -> void
+{
+    if (project.contains("rsync"))
+    {
+        this->handle_rsync_config(project);
+    }
+    else if (project.contains("script"))
+    {
+        this->handle_script_config(project);
     }
     else
     {
-        command = std::format("{} {}::{} {}", command, host, src, dest);
+        throw std::runtime_error("Unknown project type");
     }
-
-    return command;
 }
 
-auto SyncDetails::generate_sync_config(const nlohmann::json& project)
-    -> std::pair<SyncMethod, nlohmann::json>
+auto SyncDetails::handle_rsync_config(const nlohmann::json& project) -> void
 {
-    return project.contains("rsync")
-             ? SyncDetails::generate_rsync_config(project)
-             : SyncDetails::generate_script_config(project);
+    const auto& rsyncConfig = project.at("rsync");
+
+    m_SyncsPerDay = rsyncConfig.at("syncs_per_day").get<std::size_t>();
+
+    m_Commands = SyncDetails::compose_rsync_commands(rsyncConfig);
+
+    if (rsyncConfig.contains("password_file"))
+    {
+        m_PasswordFile = rsyncConfig.at("password_file");
+    }
 }
 
-auto SyncDetails::generate_rsync_config(const nlohmann::json& project)
-    -> std::pair<SyncMethod, nlohmann::json>
+auto SyncDetails::handle_script_config(const nlohmann::json& project) -> void
 {
-    nlohmann::json config;
-
-    config.emplace("syncs_per_day", project.at("rsync").at("syncs_per_day"));
-    config.emplace(
-        "primary",
-        SyncDetails::compose_rsync_command(project.at("rsync"))
-    );
-
-    if (project.at("rsync").contains("second"))
-    {
-        config.emplace(
-            "secondary",
-            SyncDetails::compose_rsync_command(project.at("rsync"), "second")
-        );
-    }
-    if (project.at("rsync").contains("third"))
-    {
-        config.emplace(
-            "tertiary",
-            SyncDetails::compose_rsync_command(project.at("rsync"), "third")
-        );
-    }
-
-    if (project.contains("password_file"))
-    {
-        config.emplace("password_file", project.at("password_file"));
-    }
-
-    return std::make_pair(SyncMethod::RSYNC, config);
-}
-
-auto SyncDetails::generate_script_config(const nlohmann::json& project)
-    -> std::pair<SyncMethod, nlohmann::json>
-{
-    nlohmann::json config;
-
-    config.emplace("syncs_per_day", project.at("script").at("syncs_per_day"));
+    m_SyncsPerDay = project.at("script").at("syncs_per_day").get<std::size_t>();
 
     std::string                    command = project.at("script").at("command");
     const std::vector<std::string> arguments
@@ -140,8 +139,6 @@ auto SyncDetails::generate_script_config(const nlohmann::json& project)
         command = std::format("{} {}", command, arg);
     }
 
-    config.emplace("command", command);
-
-    return std::make_pair(SyncMethod::SCRIPT, config);
+    m_Commands.emplace_back(command);
 }
 } // namespace mirror::sync_scheduler

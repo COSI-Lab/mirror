@@ -9,6 +9,7 @@
 // Standard Library Includes
 #include <cstddef>
 #include <cstdint>
+#include <optional>
 #include <stdexcept>
 #include <string>
 #include <utility>
@@ -19,12 +20,6 @@
 
 namespace mirror::sync_scheduler
 {
-enum class SyncMethod : std::uint8_t
-{
-    SCRIPT,
-    RSYNC,
-    UNSET,
-};
 
 class SyncDetails
 {
@@ -35,49 +30,36 @@ class SyncDetails
     [[nodiscard]]
     auto get_syncs_per_day() const -> std::size_t
     {
-        return m_SyncConfig.at("syncs_per_day").get<std::size_t>();
+        return m_SyncsPerDay;
     }
 
     [[nodiscard]]
-    auto get_sync_method() const -> SyncMethod
+    auto get_password_file() const -> std::optional<std::filesystem::path>
     {
-        return m_SyncMethod;
+        return m_PasswordFile;
     }
 
     [[nodiscard]]
-    auto get_password_file() const -> nlohmann::json
+    auto get_commands() const -> std::vector<std::string>
     {
-        return m_SyncConfig.value("password_file", "");
-    }
-
-    [[nodiscard]]
-    auto get_sync_config() const -> nlohmann::json
-    {
-        return m_SyncConfig;
+        return m_Commands;
     }
 
   private: // Methods
     [[nodiscard]]
-    static auto compose_rsync_command(
-        const nlohmann::json& rsyncConfig,
-        const std::string&    optionsKey
-    ) -> std::string;
+    static auto compose_rsync_commands(const nlohmann::json& rsyncConfig)
+        -> std::vector<std::string>;
 
-    [[nodiscard]]
-    static auto generate_sync_config(const nlohmann::json& project)
-        -> std::pair<SyncMethod, nlohmann::json>;
+    auto handle_sync_config(const nlohmann::json& project) -> void;
 
-    [[nodiscard]]
-    static auto generate_rsync_config(const nlohmann::json& project)
-        -> std::pair<SyncMethod, nlohmann::json>;
+    auto handle_rsync_config(const nlohmann::json& project) -> void;
 
-    [[nodiscard]]
-    static auto generate_script_config(const nlohmann::json& project)
-        -> std::pair<SyncMethod, nlohmann::json>;
+    auto handle_script_config(const nlohmann::json& project) -> void;
 
   private: // Members
-    SyncMethod     m_SyncMethod;
-    nlohmann::json m_SyncConfig;
+    std::size_t                          m_SyncsPerDay;
+    std::optional<std::filesystem::path> m_PasswordFile;
+    std::vector<std::string>             m_Commands;
 };
 
 struct static_project_exception : std::runtime_error

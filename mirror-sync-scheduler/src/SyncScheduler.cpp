@@ -16,6 +16,7 @@
 #include <filesystem>
 #include <format>
 #include <fstream>
+#include <ranges>
 #include <stdexcept>
 #include <string>
 #include <thread>
@@ -129,50 +130,19 @@ auto SyncScheduler::start_sync(const std::string& projectName) -> bool
     spdlog::info("Attempting sync for {}", projectName);
 
     const auto& syncDetails     = m_ProjectCatalogue.at(projectName);
-    const auto  syncConfig      = syncDetails.get_sync_config();
     bool        startSuccessful = false;
 
-    spdlog::trace(syncConfig.dump());
-
-    switch (syncDetails.get_sync_method())
+    for (const auto& [idx, command] :
+         syncDetails.get_commands() | std::views::enumerate)
     {
-    case SyncMethod::RSYNC:
+        const auto passwordFile = syncDetails.get_password_file();
+
         startSuccessful = m_JobManager.start_job(
-            projectName,
-            syncConfig.at("primary"),
-            syncDetails.get_password_file()
+            std::format("{}{}{}", projectName, (idx != 0 ? "_part_" : ""), idx),
+            command,
+            (passwordFile.has_value() ? passwordFile.value()
+                                      : std::filesystem::path {})
         );
-
-        if (syncConfig.contains("secondary") && startSuccessful)
-        {
-            m_JobManager.start_job(
-                std::format("{}_secondary", projectName),
-                syncConfig.at("secondary"),
-                syncDetails.get_password_file()
-            );
-        }
-
-        if (syncConfig.contains("tertiary") && startSuccessful)
-        {
-            startSuccessful = m_JobManager.start_job(
-                std::format("{}_tertiary", projectName),
-                syncConfig.at("tertiary"),
-                syncDetails.get_password_file()
-            );
-        }
-        break;
-
-    case SyncMethod::SCRIPT:
-        startSuccessful = m_JobManager.start_job(
-            projectName,
-            syncConfig.at("command"),
-            syncDetails.get_password_file()
-        );
-        break;
-
-    default:
-        spdlog::error("Unrecognized sync method!");
-        return false;
     }
 
     if (startSuccessful)
