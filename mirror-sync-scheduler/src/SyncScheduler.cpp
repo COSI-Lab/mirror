@@ -138,7 +138,11 @@ auto SyncScheduler::start_sync(const std::string& projectName) -> bool
         const auto passwordFile = syncDetails.get_password_file();
 
         startSuccessful = m_JobManager.start_job(
-            std::format("{}{}{}", projectName, (idx != 0 ? "_part_" : ""), idx),
+            std::format(
+                "{}{}{}",
+                projectName,
+                (idx != 0 ? "_part_" + std::to_string(idx) : ""),
+            ),
             command,
             (passwordFile.has_value() ? passwordFile.value()
                                       : std::filesystem::path {})
