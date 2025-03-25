@@ -139,7 +139,7 @@ auto SyncScheduler::start_sync(const std::string& projectName) -> bool
 
         startSuccessful = m_JobManager.start_job(
             std::format(
-                "{}{}{}",
+                "{}{}",
                 projectName,
                 (idx != 0 ? "_part_" + std::to_string(idx) : "")
             ),
