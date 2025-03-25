@@ -141,7 +141,7 @@ auto SyncScheduler::start_sync(const std::string& projectName) -> bool
             std::format(
                 "{}{}{}",
                 projectName,
-                (idx != 0 ? "_part_" + std::to_string(idx) : ""),
+                (idx != 0 ? "_part_" + std::to_string(idx) : "")
             ),
             command,
             (passwordFile.has_value() ? passwordFile.value()
