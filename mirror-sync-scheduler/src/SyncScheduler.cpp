@@ -10,7 +10,6 @@
 // Standard Library Includes
 #include <cerrno>
 #include <csignal>
-#include <cstdint>
 #include <cstdio>
 #include <cstdlib>
 #include <cstring>
@@ -24,10 +23,10 @@
 
 // Third Party Library Includes
 #include <nlohmann/json_fwd.hpp>
-// NOLINTNEXTLINE(misc-include-cleaner)
-#include <spdlog/fmt/bundled/chrono.h> // Required to use a time variable in a log
-// NOLINTNEXTLINE(misc-include-cleaner)
-#include <spdlog/fmt/bundled/ranges.h> // Required to print a range in a log
+// NOLINTNEXTLINE(misc-include-cleaner) Required to use a time variable in a log
+#include <spdlog/fmt/bundled/chrono.h>
+// NOLINTNEXTLINE(misc-include-cleaner) Required to print a range in a log
+#include <spdlog/fmt/bundled/ranges.h>
 #include <spdlog/spdlog.h>
 #include <zmq.hpp>
 
@@ -190,9 +189,17 @@ auto SyncScheduler::start_sync(const std::string& projectName) -> bool
 
 auto SyncScheduler::manual_sync_loop() -> void
 {
-    zmq::context_t          socketContext {};
-    zmq::socket_t           socket { socketContext, zmq::socket_type::rep };
-    constexpr std::uint16_t MANUAL_SYNC_PORT = 9281;
+    zmq::context_t socketContext {};
+    zmq::socket_t  socket { socketContext, zmq::socket_type::rep };
+
+    const std::string MANUAL_SYNC_PORT = []() -> std::string
+    {
+        // NOLINTNEXTLINE(*-mt-unsafe)
+        const auto* manual_sync_env = std::getenv("MANUAL_SYNC_PORT");
+
+        return (manual_sync_env != nullptr ? manual_sync_env : "9281");
+    }();
+
     socket.bind(std::format("tcp://*:{}", MANUAL_SYNC_PORT));
 
     zmq::message_t syncRequest;
