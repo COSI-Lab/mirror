@@ -51,7 +51,7 @@ auto SyncDetails::compose_rsync_commands(const nlohmann::json& rsyncConfig)
     std::vector<std::string> commands;
 
     using namespace std::string_view_literals;
-    constexpr auto rsyncExecutable = "/usr/bin/rsync"sv;
+    constexpr auto RSYNC_EXECUTABLE = "/usr/bin/rsync"sv;
 
     const std::string user = rsyncConfig.value("user", "");
     const std::string host = rsyncConfig.value("host", "");
@@ -72,7 +72,7 @@ auto SyncDetails::compose_rsync_commands(const nlohmann::json& rsyncConfig)
         {
             commands.emplace_back(std::format(
                 "{} {} {}@{}::{} {}",
-                rsyncExecutable,
+                RSYNC_EXECUTABLE,
                 options,
                 user,
                 host,
@@ -84,7 +84,7 @@ auto SyncDetails::compose_rsync_commands(const nlohmann::json& rsyncConfig)
         {
             commands.emplace_back(std::format(
                 "{} {} {}::{} {}",
-                rsyncExecutable,
+                RSYNC_EXECUTABLE,
                 options,
                 host,
                 src,

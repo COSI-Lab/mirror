@@ -84,20 +84,21 @@ auto JobManager::get_child_process_ids(const ::pid_t processID = ::getpid())
         = std::filesystem::absolute(std::format("/proc/{}/task/", processID));
 
     std::vector<::pid_t> childProcesses = {};
-    for (const auto& item : std::filesystem::directory_iterator(taskDirectory))
+    for (const auto& dirEntry :
+         std::filesystem::directory_iterator(taskDirectory))
     {
-        if (!std::filesystem::is_directory(item))
+        if (!std::filesystem::is_directory(dirEntry))
         {
             continue;
         }
 
-        std::ifstream childrenFile(item.path() / "children");
+        std::ifstream childrenFile(dirEntry.path() / "children");
 
         if (!childrenFile.good())
         {
             spdlog::error(
                 "Failed to open children file! Path: {}",
-                (item.path() / "children").string()
+                (dirEntry.path() / "children").string()
             );
 
             continue;
@@ -270,8 +271,8 @@ auto JobManager::interrupt_job(const ::pid_t processID) -> void
             return;
         }
 
-        constexpr auto checkInterval = std::chrono::milliseconds(100);
-        std::this_thread::sleep_for(checkInterval);
+        constexpr auto CHECK_INTERVAL = std::chrono::milliseconds(100);
+        std::this_thread::sleep_for(CHECK_INTERVAL);
 
         now = std::chrono::system_clock::now();
     }
