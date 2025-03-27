@@ -84,21 +84,21 @@ auto JobManager::get_child_process_ids(const ::pid_t processID = ::getpid())
         = std::filesystem::absolute(std::format("/proc/{}/task/", processID));
 
     std::vector<::pid_t> childProcesses = {};
-    for (const auto& dirEntry :
+    for (const auto& taskEntry :
          std::filesystem::directory_iterator(taskDirectory))
     {
-        if (!std::filesystem::is_directory(dirEntry))
+        if (!std::filesystem::is_directory(taskEntry))
         {
             continue;
         }
 
-        std::ifstream childrenFile(dirEntry.path() / "children");
+        std::ifstream childrenFile(taskEntry.path() / "children");
 
         if (!childrenFile.good())
         {
             spdlog::error(
                 "Failed to open children file! Path: {}",
-                (dirEntry.path() / "children").string()
+                (taskEntry.path() / "children").string()
             );
 
             continue;
