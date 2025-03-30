@@ -22,6 +22,7 @@ public class MirrorJsonValidator {
 	private static final ZContext CONTEXT = new ZContext();
 	private static final ZMQ.Socket PUB_SOCKET = CONTEXT.createSocket(SocketType.PUB);
 	private static final ZMQ.Socket REP_SOCKET = CONTEXT.createSocket(SocketType.REP);
+	private static String LAST_VALID;
 
 	static {
 		PUB_SOCKET.bind("tcp://*:27887");
@@ -29,27 +30,24 @@ public class MirrorJsonValidator {
 	}
 
 	public static void main(String[] args) {
+		ValidateMirrorJson();
 		new Thread(MirrorJsonValidator::sendUpdates).start();
 		new Thread(MirrorJsonValidator::answerRequests).start();
 	}
 
-	public static void answerRequests() {
+	private static void answerRequests() {
 		while (!Thread.currentThread().isInterrupted()) {
 			REP_SOCKET.recv(); // Block until a message is received
 
-			if (!ValidateMirrorJson()) {
-				System.out.println("Problems were found in mirrors.json, but replying to initial request anyway");
-			}
-
-			try {
+			if (LAST_VALID != null) {
 				SendZMQ(REP_SOCKET);
-			} catch (IOException e) {
-				System.out.println("Got IOException reading mirrors.json when responding to initial request");
+			} else {
+				System.out.println("Got request for mirrors.json, but file was invalid on startup and has not been fixed");
 			}
 		}
 	}
 
-	public static void sendUpdates() {
+	private static void sendUpdates() {
 		WatchService watcher;
 		try {
 			watcher = FileSystems.getDefault().newWatchService();
@@ -71,11 +69,7 @@ public class MirrorJsonValidator {
 			key.reset();
 
 			if (ValidateMirrorJson()) { // Only send if valid
-				try {
-					SendZMQ(PUB_SOCKET);
-				} catch (IOException e) {
-					System.out.println("Failed to read mirrors.json from file");
-				}
+				SendZMQ(PUB_SOCKET);
 			}
 		}
 	}
@@ -88,8 +82,10 @@ public class MirrorJsonValidator {
 	private static boolean ValidateMirrorJson() {
 
 		JsonNode mirrorsJsonNode;
+		String mirrorsJson;
 		try {
-			mirrorsJsonNode = new JsonMapper().readTree(MIRRORS_JSON);
+			mirrorsJson = Files.readString(MIRRORS_JSON.toPath());
+			mirrorsJsonNode = new JsonMapper().readTree(mirrorsJson);
 		} catch (JsonParseException e) {
 			System.out.println("mirrors.json contains invalid json");
 			return false;
@@ -101,6 +97,7 @@ public class MirrorJsonValidator {
 		Set<ValidationMessage> errors = SCHEMA.validate(mirrorsJsonNode);
 		if (errors.isEmpty()) {
 			System.out.println("mirrors.json is valid!");
+			LAST_VALID = mirrorsJson;
 			return true;
 		} else {
 			System.out.println("Errors were found in mirrors.json:");
@@ -112,8 +109,8 @@ public class MirrorJsonValidator {
 	/**
 	 * Sends mirrors.json as string via ZMQ
 	 */
-	private static void SendZMQ(ZMQ.Socket socket) throws IOException {
+	private static void SendZMQ(ZMQ.Socket socket) {
 		if (socket.getSocketType().equals(SocketType.PUB)) { socket.sendMore("Config"); }
-		socket.send(Files.readString(MIRRORS_JSON.toPath()));
+		socket.send(LAST_VALID);
 	}
 }
