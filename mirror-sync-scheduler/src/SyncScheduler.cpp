@@ -8,6 +8,7 @@
 #include <mirror/sync_scheduler/SyncScheduler.hpp>
 
 // Standard Library Includes
+#include <cctype>
 #include <cerrno>
 #include <csignal>
 #include <cstdio>
@@ -38,7 +39,7 @@
 namespace mirror::sync_scheduler
 {
 SyncScheduler::SyncScheduler()
-try
+try // Function try block my beloved
     : m_ProjectCatalogue(SyncScheduler::generate_project_catalogue(
           SyncScheduler::load_json_config("configs/mirrors.json")
               .value("mirrors", nlohmann::json())
@@ -46,16 +47,27 @@ try
       m_Schedule(m_ProjectCatalogue),
       m_DryRun(false)
 {
-    auto config
-        = SyncScheduler::load_json_config("configs/sync-scheduler.json");
+    if (const auto* dryRunPtr = std::getenv("DRY_RUN"))
+    {
+        std::string dryRun(dryRunPtr);
+        std::transform(
+            std::begin(dryRun),
+            std::end(dryRun),
+            std::begin(dryRun),
+            [](auto c) { return std::toupper(c); }
+        );
 
-    try
-    {
-        m_DryRun = config.at("dry_run");
+        if (dryRun == "TRUE")
+        {
+            m_DryRun = true;
+        }
     }
-    catch (nlohmann::json::out_of_range& oor)
+    else
     {
-        spdlog::warn("Key \"dry_run\" not set in config. Defaulting to false.");
+        spdlog::warn(
+            "Key \"DRY_RUN\" not set in the environment. Defaulting to false."
+        );
+        m_DryRun = false;
     }
 
     if (m_DryRun)
