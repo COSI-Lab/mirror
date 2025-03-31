@@ -39,11 +39,12 @@ services:
     depends_on:
       - website
 
-  
   # --- Sync scheduler ---
   sync-scheduler:
     build: ./mirror-sync-scheduler
     container_name: mirror-sync-scheduler
+    env_file:
+      - configs/sync-scheduler.env
     expose:
       - 9281
     volumes:
@@ -58,32 +59,32 @@ services:
     tty: true
 
   # --- Torrent handler ---
-#  torrent-handler:
-#    build: ./mirror-torrent-handler
-#    container_name: mirror-torrent-handler
-#    volumes:
-#      - "./mirror-torrent-handler/storage:/storage"
-#      - "./mirror-torrent-handler/configs:/mirror/configs:ro"
-#    networks:
-#      - mirror
-#    depends_on:
-#      - log-server
+  #  torrent-handler:
+  #    build: ./mirror-torrent-handler
+  #    container_name: mirror-torrent-handler
+  #    volumes:
+  #      - "./mirror-torrent-handler/storage:/storage"
+  #      - "./mirror-torrent-handler/configs:/mirror/configs:ro"
+  #    networks:
+  #      - mirror
+  #    depends_on:
+  #      - log-server
 
   # --- Map ---
-#  map:
-#    build: ./mirror-map
-#    container_name: mirror-map
-#    restart: unless-stopped
-#    ports:
-#      - "30302:8080"
-#    networks:
-#      - mirror
-#    volumes:
-#      - "./mirror-map/configs:/mirror/configs:ro"
-#      - "./mirror-map/GeoLite2City:/mirror/GeoLite2City"
-#    depends_on:
-#      - log-server
-#      - metrics
+  #  map:
+  #    build: ./mirror-map
+  #    container_name: mirror-map
+  #    restart: unless-stopped
+  #    ports:
+  #      - "30302:8080"
+  #    networks:
+  #      - mirror
+  #    volumes:
+  #      - "./mirror-map/configs:/mirror/configs:ro"
+  #      - "./mirror-map/GeoLite2City:/mirror/GeoLite2City"
+  #    depends_on:
+  #      - log-server
+  #      - metrics
 
   # --- Metrics engine ---
   metrics:
