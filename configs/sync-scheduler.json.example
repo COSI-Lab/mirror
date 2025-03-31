@@ -1,6 +1,0 @@
-{
-    "dryrun" : false,
-    "queueThreads" : 8,
-    "logServerPort": 4001,
-    "logServerHost": "mirrorlog"
-}

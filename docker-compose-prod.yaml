@@ -57,12 +57,16 @@ services:
     depends_on:
       - log-server
       - metrics
-  
+
   # --- Sync scheduler ---
   sync-scheduler:
     build: ./mirror-sync-scheduler
     container_name: mirror-sync-scheduler
+    expose:
+      - 9281
     restart: unless-stopped
+    env_file:
+      - configs/sync-scheduler.env
     volumes:
       - "/storage:/storage"
       - "./configs:/mirror/configs:ro"
@@ -117,7 +121,7 @@ services:
       - mirror
     depends_on:
       - metrics
-  
+
   # --- Grafana ---
   grafana:
     image: grafana/grafana:latest
@@ -132,11 +136,9 @@ services:
     depends_on:
       - prometheus
 
-
 networks:
   mirror:
     external: true
-
 
 volumes:
   prometheus: {}

@@ -1,1 +1,0 @@
-Development sync scripts are located here.

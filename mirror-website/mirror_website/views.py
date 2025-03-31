@@ -14,6 +14,7 @@ from django.views.decorators.http import require_GET, require_http_methods
 from .utils import getMirrorsJson, getSyncTokensJson
 
 import logging
+import zmq
 
 _logger = logging.getLogger("mirror-website")
 
@@ -64,24 +65,37 @@ def map(request: HttpRequest):
 def contact(request: HttpRequest):
     return render(request, "contact.html")
 
-@cache_page(30)
 @require_http_methods(["GET", "POST"])
 def sync(request: HttpRequest, project: str):
-    token = str()
+    token = ""
     if request.method == "GET":
         token = request.GET.get("token", "")
     else:
         token = request.POST.get("token", "")
     if token == "":
-        return HttpResponseBadRequest("Bad Request")
+        return HttpResponseBadRequest("No sync token provided")
     tokens_json = getSyncTokensJson()
-    project_token = tokens_json.get(project)
-    if project_token is None:
-        return HttpResponseNotFound("Not Found")
+
+    # TODO: There should be a key capable of syncing all projects.
+    project_token = ""
+    try:
+        project_token = tokens_json[project]
+    except KeyError:
+        return HttpResponseNotFound("Project has no sync token")
+
     if token != project_token:
-        return HttpResponseForbidden("Forbidden")
+        return HttpResponseForbidden("Invalid sync token")
+
     _logger.info("Manual sync requested for project %s", project)
 
-    # TODO implement manual sync
+    context = zmq.Context()
+    socket = context.socket(zmq.REQ)
+    socket.connect("tcp://sync-scheduler:9281")
+    socket.send_string(project)
+    reply = socket.recv()
+    socket.close()
 
-    return HttpResponse("OK")
+    if str(reply).startswith("SUCCESS"):
+        return HttpResponse(reply)
+    else:
+        return HttpResponseBadRequest(reply)
