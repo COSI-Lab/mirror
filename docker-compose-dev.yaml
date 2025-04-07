@@ -51,6 +51,7 @@ services:
       - "./mirror-sync-scheduler/storage:/storage"
       - "./mirror-sync-scheduler/configs:/mirror/configs:ro"
       - "./mirror-sync-scheduler/scripts:/mirror/scripts:ro"
+      - "./mirror-sync-scheduler/secrets:/mirror/secrets:ro"
     networks:
       - mirror
     depends_on:

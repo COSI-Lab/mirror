@@ -71,6 +71,8 @@ services:
       - "/storage:/storage"
       - "./configs:/mirror/configs:ro"
       - "./scripts:/mirror/scripts:ro"
+      - "./secrets:/mirror/secrets:ro"
+
     networks:
       - mirror
     depends_on:
