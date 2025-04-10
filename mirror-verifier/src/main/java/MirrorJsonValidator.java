@@ -42,7 +42,8 @@ public class MirrorJsonValidator {
 			if (LAST_VALID != null) {
 				SendZMQ(REP_SOCKET);
 			} else {
-				System.out.println("Got request for mirrors.json, but file was invalid on startup and has not been fixed");
+				System.out.println("Got request for mirrors.json, but file was missing or invalid on startup and has not been fixed");
+				REP_SOCKET.send("{\"error\":true}");
 			}
 		}
 	}
@@ -75,7 +76,7 @@ public class MirrorJsonValidator {
 	}
 
 	/**
-	 * Validates mirrors.json against mirrors.schema.json.
+	 * Validates mirrors.json against mirrors.schema.json, and updates LAST_VALID if it is valid
 	 *
 	 * @return true if mirrorsJson is a valid json matching schema, false otherwise
 	 */
