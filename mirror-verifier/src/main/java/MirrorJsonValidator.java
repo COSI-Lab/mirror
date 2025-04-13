@@ -39,9 +39,8 @@ public class MirrorJsonValidator {
 		while (!Thread.currentThread().isInterrupted()) {
 			REP_SOCKET.recv(); // Block until a message is received
 
-			if (LAST_VALID != null) {
-				SendZMQ(REP_SOCKET);
-			} else {
+			if (LAST_VALID != null) SendZMQ(REP_SOCKET);
+			else {
 				System.out.println("Got request for mirrors.json, but file was missing or invalid on startup and has not been fixed");
 				REP_SOCKET.send("{\"error\":true}");
 			}
@@ -69,15 +68,12 @@ public class MirrorJsonValidator {
 			key.pollEvents();
 			key.reset();
 
-			if (ValidateMirrorJson()) { // Only send if valid
-				SendZMQ(PUB_SOCKET);
-			}
+			if (ValidateMirrorJson()) SendZMQ(PUB_SOCKET);
 		}
 	}
 
 	/**
 	 * Validates mirrors.json against mirrors.schema.json, and updates LAST_VALID if it is valid
-	 *
 	 * @return true if mirrorsJson is a valid json matching schema, false otherwise
 	 */
 	private static boolean ValidateMirrorJson() {
@@ -95,6 +91,8 @@ public class MirrorJsonValidator {
 			return false;
 		}
 
+		if (LAST_VALID.equals(mirrorsJson)) return false;
+
 		Set<ValidationMessage> errors = SCHEMA.validate(mirrorsJsonNode);
 		if (errors.isEmpty()) {
 			System.out.println("mirrors.json is valid!");
@@ -109,9 +107,10 @@ public class MirrorJsonValidator {
 
 	/**
 	 * Sends mirrors.json as string via ZMQ
+	 * @param socket socket to send on
 	 */
 	private static void SendZMQ(ZMQ.Socket socket) {
-		if (socket.getSocketType().equals(SocketType.PUB)) { socket.sendMore("Config"); }
+		if (socket.getSocketType().equals(SocketType.PUB)) socket.sendMore("Config");
 		socket.send(LAST_VALID);
 	}
 }
