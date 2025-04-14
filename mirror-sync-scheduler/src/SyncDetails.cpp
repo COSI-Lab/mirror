@@ -18,6 +18,8 @@
 // Third Party Includes
 #include <nlohmann/json_fwd.hpp>
 #include <spdlog/spdlog.h>
+// NOLINTNEXTLINE(misc-include-cleaner) Required to print a range in a log
+#include <spdlog/fmt/bundled/ranges.h>
 
 namespace mirror::sync_scheduler
 {
@@ -125,7 +127,6 @@ auto SyncDetails::handle_rsync_options_strings(
     {
         for (const std::string option : optionsStrings)
         {
-            spdlog::trace("Option: {}", option);
             toReturn.emplace_back(option);
         }
     }
@@ -137,6 +138,8 @@ auto SyncDetails::handle_rsync_options_strings(
             jsone.what()
         );
     }
+
+    spdlog::trace("Options: {{ {} }}", fmt::join(toReturn, ", "));
 
     return toReturn;
 }
