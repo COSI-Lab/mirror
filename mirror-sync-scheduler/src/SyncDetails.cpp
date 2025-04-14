@@ -94,20 +94,20 @@ auto SyncDetails::compose_rsync_commands(const nlohmann::json& rsyncConfig)
 
             commands.front().emplace_back(options);
         }
+    }
 
-        for (auto& command : commands)
+    for (auto& command : commands)
+    {
+        if (!user.empty())
         {
-            if (!user.empty())
-            {
-                command.emplace_back(std::format("{}@{}::{}", user, host, src));
-            }
-            else
-            {
-                command.emplace_back(std::format("{}::{}", host, src));
-            }
-
-            command.emplace_back(dest);
+            command.emplace_back(std::format("{}@{}::{}", user, host, src));
         }
+        else
+        {
+            command.emplace_back(std::format("{}::{}", host, src));
+        }
+
+        command.emplace_back(dest);
     }
 
     return commands;
