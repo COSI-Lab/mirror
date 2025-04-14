@@ -103,6 +103,8 @@ auto SyncDetails::compose_rsync_commands(const nlohmann::json& rsyncConfig)
             }
 
             command.emplace_back(dest);
+
+            spdlog::trace("Options: {{ {} }}", fmt::join(command, ", "));
         }
     }
 
@@ -118,8 +120,6 @@ auto SyncDetails::handle_rsync_options_array(const nlohmann::json& optionsArray)
     {
         toReturn.emplace_back(option);
     }
-
-    spdlog::trace("Options: {{ {} }}", fmt::join(toReturn, ", "));
 
     return toReturn;
 }
