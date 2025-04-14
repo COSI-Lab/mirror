@@ -17,6 +17,7 @@
 
 // Third Party Includes
 #include <nlohmann/json_fwd.hpp>
+#include <spdlog/spdlog.h>
 
 namespace mirror::sync_scheduler
 {
@@ -120,9 +121,20 @@ auto SyncDetails::handle_rsync_options_strings(
 {
     std::vector<std::string> toReturn = { "/usr/bin/rsync" };
 
-    for (const std::string option : optionsStrings)
+    try
     {
-        toReturn.emplace_back(option);
+        for (const std::string option : optionsStrings)
+        {
+            toReturn.emplace_back(option);
+        }
+    }
+    catch (nlohmann::json::exception& jsone)
+    {
+        spdlog::error(
+            "Failed to handle options strings {}. Error: {}",
+            optionsStrings.dump(),
+            jsone.what()
+        );
     }
 
     return toReturn;
