@@ -77,7 +77,7 @@ auto SyncDetails::compose_rsync_commands(const nlohmann::json& rsyncConfig)
             );
         }
 
-        spdlog::trace("Options: {{ {} }}", fmt::join(options, ", "));
+        spdlog::trace("Options: {}", options.dump());
 
         if (options.is_array())
         {
