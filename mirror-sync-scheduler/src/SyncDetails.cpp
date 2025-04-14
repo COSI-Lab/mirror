@@ -25,10 +25,12 @@ SyncDetails::SyncDetails(const nlohmann::json& project)
 {
     if (project.contains("static"))
     {
-        throw static_project_exception(std::format(
-            "Project '{}' uses a static sync. Project not created!",
-            project.value("name", "")
-        ));
+        throw static_project_exception(
+            std::format(
+                "Project '{}' uses a static sync. Project not created!",
+                project.value("name", "")
+            )
+        );
     }
 
     const bool isRsyncOrScript
@@ -36,19 +38,21 @@ SyncDetails::SyncDetails(const nlohmann::json& project)
 
     if (!isRsyncOrScript)
     {
-        throw std::runtime_error(std::format(
-            "Project '{}' is missing a sync type!",
-            project.value("name", "")
-        ));
+        throw std::runtime_error(
+            std::format(
+                "Project '{}' is missing a sync type!",
+                project.value("name", "")
+            )
+        );
     }
 
     SyncDetails::handle_sync_config(project);
 }
 
 auto SyncDetails::compose_rsync_commands(const nlohmann::json& rsyncConfig)
-    -> std::vector<std::string>
+    -> std::vector<std::vector<std::string>>
 {
-    std::vector<std::string> commands;
+    std::vector<std::vector<std::string>> commands;
 
     using namespace std::string_view_literals;
     constexpr auto RSYNC_EXECUTABLE = "/usr/bin/rsync"sv;
@@ -58,42 +62,70 @@ auto SyncDetails::compose_rsync_commands(const nlohmann::json& rsyncConfig)
     const std::string src  = rsyncConfig.value("src", "");
     const std::string dest = rsyncConfig.value("dest", "");
 
-    for (const std::string options : rsyncConfig.at("options"))
+    for (const nlohmann::json& options : rsyncConfig.at("options"))
     {
         if (options.empty())
         {
-            throw std::runtime_error(std::format(
-                "Project {} contains invalid rsync config options",
-                rsyncConfig.value("name", "")
-            ));
+            throw std::runtime_error(
+                std::format(
+                    "Project {} contains invalid rsync config options",
+                    rsyncConfig.value("name", "")
+                )
+            );
         }
 
-        if (!user.empty())
+        if (options.is_array())
         {
-            commands.emplace_back(std::format(
-                "{} {} {}@{}::{} {}",
-                RSYNC_EXECUTABLE,
-                options,
-                user,
-                host,
-                src,
-                dest
-            ));
+            commands = handle_rsync_options_array(options);
         }
-        else
+        else if (options.is_string())
         {
-            commands.emplace_back(std::format(
-                "{} {} {}::{} {}",
-                RSYNC_EXECUTABLE,
-                options,
-                host,
-                src,
-                dest
-            ));
+            commands.emplace_back(handle_rsync_options_strings(options));
+        }
+
+        for (auto& command : commands)
+        {
+            if (!user.empty())
+            {
+                command.emplace_back(std::format("{}@{}::{}", user, host, src));
+            }
+            else
+            {
+                command.emplace_back(std::format("{}::{}", host, src));
+            }
+
+            command.emplace_back(dest);
         }
     }
 
     return commands;
+}
+
+auto SyncDetails::handle_rsync_options_array(const nlohmann::json& optionsArray)
+    -> std::vector<std::vector<std::string>>
+{
+    std::vector<std::vector<std::string>> toReturn;
+
+    for (const nlohmann::json& optionsStrings : optionsArray)
+    {
+        toReturn.emplace_back(handle_rsync_options_strings(optionsStrings));
+    }
+
+    return toReturn;
+}
+
+auto SyncDetails::handle_rsync_options_strings(
+    const nlohmann::json& optionsStrings
+) -> std::vector<std::string>
+{
+    std::vector<std::string> toReturn = { "/usr/bin/rsync" };
+
+    for (const std::string option : optionsStrings)
+    {
+        toReturn.emplace_back(option);
+    }
+
+    return toReturn;
 }
 
 auto SyncDetails::handle_sync_config(const nlohmann::json& project) -> void
@@ -130,15 +162,17 @@ auto SyncDetails::handle_script_config(const nlohmann::json& project) -> void
 {
     m_SyncsPerDay = project.at("script").at("syncs_per_day").get<std::size_t>();
 
-    std::string                    command = project.at("script").at("command");
+    std::vector<std::string> toReturn = { "/usr/bin/sh", "-c" };
+    toReturn.emplace_back(project.at("script").at("command"));
+
     const std::vector<std::string> arguments
         = project.at("script").value("arguments", std::vector<std::string> {});
 
     for (const std::string& arg : arguments)
     {
-        command = std::format("{} {}", command, arg);
+        toReturn.emplace_back(arg);
     }
 
-    m_Commands.emplace_back(command);
+    m_Commands.emplace_back(toReturn);
 }
 } // namespace mirror::sync_scheduler
