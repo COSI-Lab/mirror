@@ -38,7 +38,7 @@ class JobManager
   public: // Methods
     auto start_job(
         const std::string&           jobName,
-        std::string                  command,
+        std::vector<std::string>     command,
         const std::filesystem::path& passwordFile
     ) -> bool;
 

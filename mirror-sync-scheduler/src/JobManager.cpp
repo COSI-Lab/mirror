@@ -384,7 +384,7 @@ auto JobManager::deregister_jobs(const std::vector<::pid_t>& completedJobs)
 // NOLINTBEGIN(*-easily-swappable-parameters)
 auto JobManager::start_job(
     const std::string&           jobName,
-    std::string                  command,
+    std::vector<std::string>     command,
     const std::filesystem::path& passwordFile
 ) -> bool
 // NOLINTEND(*-easily-swappable-parameters)
@@ -469,17 +469,15 @@ auto JobManager::start_job(
             );
         }
 
-        //! ::strdup allocates memory with ::malloc. Typically this memory
-        //! should be ::free'd. However, argv is supposed to have the same
-        //! lifetime as the process it belongs to, therefore the memory should
-        //! never be freed and we do not need to maintain a copy of the pointer
-        //! to free it at a later time
-        // NOLINTBEGIN(*-include-cleaner)
-        const std::array<char*, 4> argv { ::strdup("/bin/sh"),
-                                          ::strdup("-c"),
-                                          ::strdup(command.data()),
-                                          nullptr };
-        // NOLINTEND(*-include-cleaner)
+        std::vector<char*> argv;
+        argv.resize(command.size());
+
+        std::transform(
+            std::begin(command),
+            std::end(command),
+            std::begin(argv),
+            [](std::string& str) { return std::data(str); }
+        );
 
         spdlog::debug("Setting process group ID");
         ::setpgid(0, 0);
