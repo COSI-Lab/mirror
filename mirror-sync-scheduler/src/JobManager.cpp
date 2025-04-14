@@ -418,6 +418,9 @@ auto JobManager::deregister_jobs(const std::vector<::pid_t>& completedJobs)
     const std::lock_guard<std::mutex> jobLock(m_JobMutex);
     for (const auto& job : completedJobs)
     {
+        ::close(m_ActiveJobs.at(job).stderrPipe);
+        ::close(m_ActiveJobs.at(job).stdoutPipe);
+
         m_ActiveJobs.erase(job);
     }
 }
