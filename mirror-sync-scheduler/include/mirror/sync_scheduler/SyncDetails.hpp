@@ -51,9 +51,6 @@ class SyncDetails
         -> std::vector<std::vector<std::string>>;
 
     static auto handle_rsync_options_array(const nlohmann::json& optionsArray)
-        -> std::vector<std::vector<std::string>>;
-    static auto
-    handle_rsync_options_strings(const nlohmann::json& optionsString)
         -> std::vector<std::string>;
 
     auto handle_sync_config(const nlohmann::json& project) -> void;

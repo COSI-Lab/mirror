@@ -79,11 +79,16 @@ auto SyncDetails::compose_rsync_commands(const nlohmann::json& rsyncConfig)
 
         if (options.is_array())
         {
-            commands = handle_rsync_options_array(options);
+            commands.emplace_back(handle_rsync_options_array(options));
         }
         else if (options.is_string())
         {
-            commands.emplace_back(handle_rsync_options_strings(options));
+            if (commands.empty())
+            {
+                commands.resize(1);
+            }
+
+            commands.front().emplace_back(options);
         }
 
         for (auto& command : commands)
@@ -105,41 +110,14 @@ auto SyncDetails::compose_rsync_commands(const nlohmann::json& rsyncConfig)
 }
 
 auto SyncDetails::handle_rsync_options_array(const nlohmann::json& optionsArray)
-    -> std::vector<std::vector<std::string>>
-{
-    std::vector<std::vector<std::string>> toReturn;
-
-    for (const nlohmann::json& optionsStrings : optionsArray)
-    {
-        toReturn.emplace_back(handle_rsync_options_strings(optionsStrings));
-    }
-
-    return toReturn;
-}
-
-auto SyncDetails::handle_rsync_options_strings(
-    const nlohmann::json& optionsStrings
-) -> std::vector<std::string>
+    -> std::vector<std::string>
 {
     std::vector<std::string> toReturn = { "/usr/bin/rsync" };
 
-    try
+    for (const std::string option : optionsArray)
     {
-        for (const std::string option : optionsStrings)
-        {
-            toReturn.emplace_back(option);
-        }
+        toReturn.emplace_back(option);
     }
-    catch (nlohmann::json::exception& jsone)
-    {
-        spdlog::error(
-            "Failed to handle options strings {}. Error: {}",
-            optionsStrings.dump(),
-            jsone.what()
-        );
-    }
-
-    spdlog::trace("Options: {{ {} }}", fmt::join(toReturn, ", "));
 
     return toReturn;
 }
