@@ -277,6 +277,8 @@ auto JobManager::write_streams_to_file(const ::pid_t processID)
         stdoutLogFile << streamContents;
     }
 
+    streamContents.clear();
+
     // STDERR
     {
         ::read(
@@ -543,7 +545,7 @@ auto JobManager::start_job(
         }
 
         std::vector<char*> argv;
-        argv.resize(command.size());
+        argv.resize(command.size() + 1);
 
         std::transform(
             std::begin(command),
@@ -551,6 +553,9 @@ auto JobManager::start_job(
             std::begin(argv),
             [](std::string& str) { return std::data(str); }
         );
+
+        // Last item in argv has to be a nullptr;
+        argv.emplace_back(nullptr);
 
         spdlog::debug("Setting process group ID");
         ::setpgid(0, 0);
