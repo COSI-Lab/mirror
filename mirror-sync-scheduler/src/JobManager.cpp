@@ -204,10 +204,8 @@ auto JobManager::reap_processes() -> std::vector<::pid_t>
                     = this->write_streams_to_file(childProcessID);
 
                 spdlog::warn(
-                    "Project {} failed to sync! The contents of the "
-                    "process' "
-                    "stream have been written to {} and {}! Exit code: {} "
-                    "(pid: {})",
+                    "Project {} failed to sync! STDOUT and STDERR been written "
+                    "to {} and {}! Exit code: {} (pid: {})",
                     m_ActiveJobs.at(childProcessID).jobName,
                     logFileNames.first,
                     logFileNames.second,
