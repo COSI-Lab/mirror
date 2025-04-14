@@ -53,7 +53,8 @@ class JobManager
     auto kill_all_jobs() -> void;
     auto reap_processes() -> std::vector<::pid_t>;
     auto deregister_jobs(const std::vector<::pid_t>& completedJobs) -> void;
-    auto write_stderr_to_file(const ::pid_t processID) -> std::string;
+    auto write_streams_to_file(const ::pid_t processID)
+        -> std::pair<std::string, std::string>;
     auto process_reaper(const std::stop_token& stopToken) -> void;
 
   private: // Static Methods

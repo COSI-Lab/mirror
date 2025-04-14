@@ -31,6 +31,7 @@
 #include <stop_token>
 #include <string>
 #include <thread>
+#include <utility>
 #include <vector>
 
 // Third Party Includes
@@ -198,14 +199,16 @@ auto JobManager::reap_processes() -> std::vector<::pid_t>
             }
             else if (isKnownJob && exitStatus != EXIT_SUCCESS)
             {
-                const auto logFileName
-                    = this->write_stderr_to_file(childProcessID);
+                const auto logFileNames
+                    = this->write_streams_to_file(childProcessID);
 
                 spdlog::warn(
-                    "Project {} failed to sync! The contents of STDERR for the "
-                    "process have been written to {}! Exit code: {} (pid: {})",
+                    "Project {} failed to sync! The contents of the process' "
+                    "stream have been written to {} and {}! Exit code: {} "
+                    "(pid: {})",
                     m_ActiveJobs.at(childProcessID).jobName,
-                    logFileName,
+                    logFileNames.first,
+                    logFileNames.second,
                     exitStatus,
                     childProcessID
                 );
@@ -232,7 +235,8 @@ auto JobManager::reap_processes() -> std::vector<::pid_t>
     return completedJobs;
 }
 
-auto JobManager::write_stderr_to_file(const ::pid_t processID) -> std::string
+auto JobManager::write_streams_to_file(const ::pid_t processID)
+    -> std::pair<std::string, std::string>
 {
     static std::random_device            randomDevice;
     static std::mt19937                  randomGenerator(randomDevice());
@@ -241,29 +245,64 @@ auto JobManager::write_stderr_to_file(const ::pid_t processID) -> std::string
     const auto logNumber    = distribution(randomGenerator);
     const auto errorLogPath = std::filesystem::relative("error-logs");
 
-    auto logFileName = std::format(
+    const auto stdoutLogFileName = std::format(
+        "{}-{}-stdout.log",
+        m_ActiveJobs.at(processID).jobName,
+        logNumber
+    );
+
+    const auto stderrLogFileName = std::format(
         "{}-{}-stderr.log",
         m_ActiveJobs.at(processID).jobName,
         logNumber
     );
 
-    std::ofstream logFile(errorLogPath / logFileName);
+    int         bytesAvailable = 0;
+    std::string streamContents;
 
-    int bytesAvailable = 0;
-    ::ioctl(m_ActiveJobs.at(processID).stderrPipe, FIONREAD, &bytesAvailable);
+    // STDOUT
+    {
+        // NOLINTNEXTLINE(*-include-cleaner, *-vararg)
+        ::ioctl(
+            m_ActiveJobs.at(processID).stdoutPipe,
+            FIONREAD,
+            &bytesAvailable
+        );
 
-    std::string stderrContents;
-    stderrContents.resize(bytesAvailable + 1);
+        streamContents.resize(bytesAvailable + 1);
 
-    ::read(
-        m_ActiveJobs.at(processID).stderrPipe,
-        stderrContents.data(),
-        bytesAvailable
-    );
+        ::read(
+            m_ActiveJobs.at(processID).stdoutPipe,
+            streamContents.data(),
+            bytesAvailable
+        );
 
-    logFile << stderrContents;
+        std::ofstream stdoutLogFile(errorLogPath / stdoutLogFileName);
+        stdoutLogFile << streamContents;
+    }
 
-    return logFileName;
+    // STDERR
+    {
+        // NOLINTNEXTLINE(*-include-cleaner, *-vararg)
+        ::ioctl(
+            m_ActiveJobs.at(processID).stderrPipe,
+            FIONREAD,
+            &bytesAvailable
+        );
+
+        streamContents.resize(bytesAvailable + 1);
+
+        ::read(
+            m_ActiveJobs.at(processID).stderrPipe,
+            streamContents.data(),
+            bytesAvailable
+        );
+
+        std::ofstream stderrLogFile(errorLogPath / stderrLogFileName);
+        stderrLogFile << streamContents;
+    }
+
+    return { stdoutLogFileName, stderrLogFileName };
 }
 
 // NOLINTNEXTLINE(*-no-recursion)
