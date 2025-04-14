@@ -40,10 +40,12 @@ namespace mirror::sync_scheduler
 {
 SyncScheduler::SyncScheduler()
 try // Function try block my beloved
-    : m_ProjectCatalogue(SyncScheduler::generate_project_catalogue(
-          SyncScheduler::load_json_config("configs/mirrors.json")
-              .value("mirrors", nlohmann::json())
-      )),
+    : m_ProjectCatalogue(
+          SyncScheduler::generate_project_catalogue(
+              SyncScheduler::load_json_config("configs/mirrors.json")
+                  .value("mirrors", nlohmann::json())
+          )
+      ),
       m_Schedule(m_ProjectCatalogue),
       m_DryRun(false)
 {
@@ -90,12 +92,14 @@ auto SyncScheduler::load_json_config(const std::filesystem::path& file)
     {
         std::string errorMessage(BUFSIZ, '\0');
 
-        throw std::runtime_error(std::format(
-            "Failed to load config file {}! OS Error: {}",
-            file.filename().string(),
-            // NOLINTNEXTLINE(*-include-cleaner)
-            ::strerror_r(errno, errorMessage.data(), errorMessage.size())
-        ));
+        throw std::runtime_error(
+            std::format(
+                "Failed to load config file {}! OS Error: {}",
+                file.filename().string(),
+                // NOLINTNEXTLINE(*-include-cleaner)
+                ::strerror_r(errno, errorMessage.data(), errorMessage.size())
+            )
+        );
     }
 
     return nlohmann::json::parse(mirrorsConfigFile);
@@ -214,10 +218,12 @@ auto SyncScheduler::manual_sync_loop() -> void
 
             spdlog::error("Manual sync for {} failed", projectName);
             socket.send(
-                zmq::message_t(std::format(
-                    "FAILURE: Failed to start sync for {}",
-                    projectName
-                )),
+                zmq::message_t(
+                    std::format(
+                        "FAILURE: Failed to start sync for {}",
+                        projectName
+                    )
+                ),
                 zmq::send_flags::none
             );
             continue;
