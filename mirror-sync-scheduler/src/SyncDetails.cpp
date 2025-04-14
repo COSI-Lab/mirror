@@ -125,6 +125,7 @@ auto SyncDetails::handle_rsync_options_strings(
     {
         for (const std::string option : optionsStrings)
         {
+            spdlog::trace("Option: {}", option);
             toReturn.emplace_back(option);
         }
     }
