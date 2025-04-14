@@ -8,6 +8,7 @@
 #include <mirror/sync_scheduler/JobManager.hpp>
 
 // System Includes
+#include <asm/termbits.h>
 #include <sys/ioctl.h>
 #include <sys/types.h>
 #include <sys/wait.h>
@@ -203,7 +204,8 @@ auto JobManager::reap_processes() -> std::vector<::pid_t>
                     = this->write_streams_to_file(childProcessID);
 
                 spdlog::warn(
-                    "Project {} failed to sync! The contents of the process' "
+                    "Project {} failed to sync! The contents of the "
+                    "process' "
                     "stream have been written to {} and {}! Exit code: {} "
                     "(pid: {})",
                     m_ActiveJobs.at(childProcessID).jobName,
@@ -217,14 +219,16 @@ auto JobManager::reap_processes() -> std::vector<::pid_t>
             else if (!isKnownJob && exitStatus == EXIT_SUCCESS)
             {
                 spdlog::info(
-                    "Reaped successful unregistered child process with pid {}",
+                    "Reaped successful unregistered child process with pid "
+                    "{}",
                     childProcessID
                 );
             }
             else
             {
                 spdlog::warn(
-                    "Reaped unsuccessful unregistered child process with pid "
+                    "Reaped unsuccessful unregistered child process with "
+                    "pid "
                     "{}",
                     childProcessID
                 );
@@ -257,24 +261,16 @@ auto JobManager::write_streams_to_file(const ::pid_t processID)
         logNumber
     );
 
-    int         bytesAvailable = 0;
-    std::string streamContents;
+    static std::string streamContents;
+
+    streamContents.resize(BUFSIZ);
 
     // STDOUT
     {
-        // NOLINTNEXTLINE(*-include-cleaner, *-vararg)
-        ::ioctl(
-            m_ActiveJobs.at(processID).stdoutPipe,
-            FIONREAD,
-            &bytesAvailable
-        );
-
-        streamContents.resize(bytesAvailable + 1);
-
         ::read(
             m_ActiveJobs.at(processID).stdoutPipe,
             streamContents.data(),
-            bytesAvailable
+            streamContents.size()
         );
 
         std::ofstream stdoutLogFile(errorLogPath / stdoutLogFileName);
@@ -283,19 +279,10 @@ auto JobManager::write_streams_to_file(const ::pid_t processID)
 
     // STDERR
     {
-        // NOLINTNEXTLINE(*-include-cleaner, *-vararg)
-        ::ioctl(
-            m_ActiveJobs.at(processID).stderrPipe,
-            FIONREAD,
-            &bytesAvailable
-        );
-
-        streamContents.resize(bytesAvailable + 1);
-
         ::read(
             m_ActiveJobs.at(processID).stderrPipe,
             streamContents.data(),
-            bytesAvailable
+            streamContents.size()
         );
 
         std::ofstream stderrLogFile(errorLogPath / stderrLogFileName);
@@ -308,11 +295,12 @@ auto JobManager::write_streams_to_file(const ::pid_t processID)
 // NOLINTNEXTLINE(*-no-recursion)
 auto JobManager::interrupt_job(const ::pid_t processID) -> void
 {
-    // Interrupt child processes recursively. Starts with the grandest child and
-    // works its way back up to the direct descendant of the sync scheduler
+    // Interrupt child processes recursively. Starts with the grandest child
+    // and works its way back up to the direct descendant of the sync
+    // scheduler
     //
-    // Base case: process with no children. `get_child_process_ids` will be an
-    // empty collection meaning nothing to iterate over
+    // Base case: process with no children. `get_child_process_ids` will be
+    // an empty collection meaning nothing to iterate over
     for (const ::pid_t childProcessID : JobManager::get_child_process_ids())
     {
         JobManager::interrupt_job(childProcessID);
@@ -492,7 +480,8 @@ auto JobManager::start_job(
         std::string errorMessage(BUFSIZ, '\0');
 
         spdlog::warn(
-            "Failed to create pipe for child stdout while syncing project {}! "
+            "Failed to create pipe for child stdout while syncing project "
+            "{}! "
             "Error message: {}",
             jobName,
             // NOLINTNEXTLINE(*-include-cleaner)
@@ -507,7 +496,8 @@ auto JobManager::start_job(
         std::string errorMessage(BUFSIZ, '\0');
 
         spdlog::warn(
-            "Failed to create pipe for child stderr while syncing project {}! "
+            "Failed to create pipe for child stderr while syncing project "
+            "{}! "
             "Error message: {}",
             jobName,
             // NOLINTNEXTLINE(*-include-cleaner)
@@ -572,7 +562,8 @@ auto JobManager::start_job(
         std::string errorMessage(BUFSIZ, '\0');
 
         spdlog::error(
-            "Call to execv() failed while trying to sync {}! Error message: {}",
+            "Call to execv() failed while trying to sync {}! Error "
+            "message: {}",
             jobName,
             // NOLINTNEXTLINE(*-include-cleaner)
             ::strerror_r(errno, errorMessage.data(), errorMessage.size())
