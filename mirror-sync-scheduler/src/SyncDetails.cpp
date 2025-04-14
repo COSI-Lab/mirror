@@ -77,9 +77,13 @@ auto SyncDetails::compose_rsync_commands(const nlohmann::json& rsyncConfig)
             );
         }
 
+        spdlog::trace("Options: {{ {} }}", fmt::join(options, ", "));
+
         if (options.is_array())
         {
-            commands.emplace_back(handle_rsync_options_array(options));
+            commands.emplace_back(
+                SyncDetails::handle_rsync_options_array(options)
+            );
         }
         else if (options.is_string())
         {
@@ -103,8 +107,6 @@ auto SyncDetails::compose_rsync_commands(const nlohmann::json& rsyncConfig)
             }
 
             command.emplace_back(dest);
-
-            spdlog::trace("Options: {{ {} }}", fmt::join(command, ", "));
         }
     }
 
