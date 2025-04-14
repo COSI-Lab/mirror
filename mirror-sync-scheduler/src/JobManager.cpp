@@ -592,7 +592,7 @@ auto JobManager::start_job(
     // Close write end of the stderr pipe in the parent process
     ::close(stderrPipes.at(1));
 
-    this->register_job(jobName, pid, stdoutPipes.at(1), stderrPipes.at(1));
+    this->register_job(jobName, pid, stdoutPipes.at(0), stderrPipes.at(0));
     return true;
 }
 } // namespace mirror::sync_scheduler
