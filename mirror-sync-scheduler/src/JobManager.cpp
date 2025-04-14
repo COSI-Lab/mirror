@@ -229,7 +229,7 @@ auto JobManager::reap_processes() -> std::vector<::pid_t>
 auto JobManager::interrupt_job(const ::pid_t processID) -> void
 {
     // Interrupt child processes recursively. Starts with the grandest child and
-    // works its way back up to the direct decendant of the sync scheduler
+    // works its way back up to the direct descendant of the sync scheduler
     //
     // Base case: process with no children. `get_child_process_ids` will be an
     // empty collection meaning nothing to iterate over
