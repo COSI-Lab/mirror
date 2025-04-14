@@ -69,6 +69,7 @@ services:
       - configs/sync-scheduler.env
     volumes:
       - "/storage:/storage"
+      - "./sync-error-logs:/mirror/error-logs"
       - "./configs:/mirror/configs:ro"
       - "./scripts:/mirror/scripts:ro"
       - "./secrets:/mirror/secrets:ro"
