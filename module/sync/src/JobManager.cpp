@@ -8,6 +8,7 @@
 #include <mirror/sync_scheduler/JobManager.hpp>
 
 // System Includes
+#include <sys/ioctl.h>
 #include <sys/types.h>
 #include <sys/wait.h>
 #include <unistd.h>
@@ -26,6 +27,7 @@
 #include <fstream>
 #include <iterator>
 #include <mutex>
+#include <random>
 #include <stop_token>
 #include <string>
 #include <thread>
@@ -196,9 +198,14 @@ auto JobManager::reap_processes() -> std::vector<::pid_t>
             }
             else if (isKnownJob && exitStatus != EXIT_SUCCESS)
             {
+                const auto logFileName
+                    = this->write_stderr_to_file(childProcessID);
+
                 spdlog::warn(
-                    "Project {} failed to sync! Exit code: {} (pid: {})",
+                    "Project {} failed to sync! The contents of STDERR for the "
+                    "process have been written to {}! Exit code: {} (pid: {})",
                     m_ActiveJobs.at(childProcessID).jobName,
+                    logFileName,
                     exitStatus,
                     childProcessID
                 );
@@ -223,6 +230,40 @@ auto JobManager::reap_processes() -> std::vector<::pid_t>
     }
 
     return completedJobs;
+}
+
+auto JobManager::write_stderr_to_file(const ::pid_t processID) -> std::string
+{
+    static std::random_device            randomDevice;
+    static std::mt19937                  randomGenerator(randomDevice());
+    static std::uniform_int_distribution distribution(1, 10000);
+
+    const auto logNumber    = distribution(randomGenerator);
+    const auto errorLogPath = std::filesystem::relative("error-logs");
+
+    auto logFileName = std::format(
+        "{}-{}-stderr.log",
+        m_ActiveJobs.at(processID).jobName,
+        logNumber
+    );
+
+    std::ofstream logFile(errorLogPath / logFileName);
+
+    int bytesAvailable = 0;
+    ::ioctl(m_ActiveJobs.at(processID).stderrPipe, FIONREAD, &bytesAvailable);
+
+    std::string stderrContents;
+    stderrContents.resize(bytesAvailable + 1);
+
+    ::read(
+        m_ActiveJobs.at(processID).stderrPipe,
+        stderrContents.data(),
+        bytesAvailable
+    );
+
+    logFile << stderrContents;
+
+    return logFileName;
 }
 
 // NOLINTNEXTLINE(*-no-recursion)
