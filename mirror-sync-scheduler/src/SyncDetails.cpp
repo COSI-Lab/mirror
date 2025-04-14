@@ -90,6 +90,8 @@ auto SyncDetails::compose_rsync_commands(const nlohmann::json& rsyncConfig)
             if (commands.empty())
             {
                 commands.resize(1);
+
+                commands.front().emplace_back("/usr/bin/rsync");
             }
 
             commands.front().emplace_back(options);
@@ -108,6 +110,8 @@ auto SyncDetails::compose_rsync_commands(const nlohmann::json& rsyncConfig)
         }
 
         command.emplace_back(dest);
+
+        spdlog::trace("Options: {{ {} }}", fmt::join(command, ", "));
     }
 
     return commands;
