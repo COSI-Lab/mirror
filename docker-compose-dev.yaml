@@ -55,10 +55,6 @@ services:
       - "./mirror-sync-scheduler/secrets:/mirror/secrets:ro"
     networks:
       - mirror
-    depends_on:
-      - log-server
-    stdin_open: true
-    tty: true
 
   # --- Torrent handler ---
   #  torrent-handler:
