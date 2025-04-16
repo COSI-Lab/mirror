@@ -74,7 +74,7 @@ auto JobManager::process_reaper(const std::stop_token& stopToken) -> void
             return;
         }
 
-        auto completedJobs = reap_processes();
+        auto completedJobs = this->reap_processes();
 
         this->deregister_jobs(completedJobs);
         completedJobs.clear();
@@ -276,6 +276,7 @@ auto JobManager::write_streams_to_file(const ::pid_t processID)
     }
 
     streamContents.clear();
+    streamContents.resize(BUFSIZ);
 
     // STDERR
     {
