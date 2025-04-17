@@ -9,7 +9,7 @@
 constexpr std::string_view PROMETHEUS_FORMAT = "http://mirror-prometheus:9090/api/v1/query_range?query=bytes_sent&start={}&end={}&step=24h";
 constexpr std::string_view DATESTRING_FORMAT = "{0:%F}T{0:%T}Z";
 
-std::vector<StatsEntry> mirror::stats_bot::get_stats()
+std::vector<mirror::stats_bot::StatsEntry> mirror::stats_bot::get_stats()
 {
     nlohmann::json stats_json = get_statistics_json();
     std::vector<StatsEntry> stats_data{};
