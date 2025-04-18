@@ -302,7 +302,8 @@ auto JobManager::interrupt_job(const ::pid_t processID) -> void
     //
     // Base case: process with no children. `get_child_process_ids` will be
     // an empty collection meaning nothing to iterate over
-    for (const ::pid_t childProcessID : JobManager::get_child_process_ids())
+    for (const ::pid_t childProcessID :
+         JobManager::get_child_process_ids(processID))
     {
         JobManager::interrupt_job(childProcessID);
     }
