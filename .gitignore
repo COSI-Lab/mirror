@@ -1,3 +1,4 @@
 .vscode
 build/*
 GeoLite2City
+data/*

@@ -21,7 +21,7 @@ services:
       dockerfile: proxy.Dockerfile
     container_name: mirror-website-proxy
     ports:
-      - "127.0.0.1:30301:80"
+      - "0.0.0.0:30301:80"
     networks:
       - mirror
     depends_on:
@@ -93,6 +93,39 @@ services:
       - mirror
     depends_on:
       - metrics
+
+  alloy:
+    image: grafana/alloy:latest
+    container_name: mirror-alloy
+    volumes:
+      - ./configs/alloy.conf:/etc/alloy/config.alloy
+      - /var/run/docker.sock:/var/run/docker.sock
+    ports:
+      - 12345:12345
+    command: run --server.http.listen-addr=0.0.0.0:12345 --storage.path=/var/lib/alloy/data /etc/alloy/config.alloy
+    networks:
+      - mirror
+  loki:
+    image: grafana/loki:latest
+    container_name: mirror-loki
+    volumes:
+      - ./configs/loki-config.yaml:/etc/loki/loki-config.yaml
+    ports:
+      - 3100:3100
+    networks:
+      - mirror
+  grafana:
+    image: grafana/grafana:latest
+    container_name: mirror-grafana
+    volumes:
+      - ./configs/grafana.ini:/etc/grafana/grafana.ini
+      #TODO: Fix file permissions, this crashes unless you make it 777
+      - ./data/grafana:/var/lib/grafana
+    ports:
+      - 3000:3000
+    networks:
+      - mirror
+
 
 networks:
   mirror:
