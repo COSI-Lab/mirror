@@ -1,12 +1,13 @@
 FROM ubuntu:24.04 AS builder
 RUN apt-get update && apt-get install -y \
     git \
-    g++ \
+    clang++-19 \
     cmake \
     libssl-dev \
     ninja-build \
     curl \
     libcurl4 \
+    libcurl4-openssl-dev \
     libopus0 \
     libz-dev \
     libzmq3-dev
@@ -15,7 +16,7 @@ COPY ./src src
 COPY ./include include
 COPY ./cmake cmake
 COPY ./CMakeLists.txt CMakeLists.txt
-RUN cmake -B build -G Ninja
+RUN CXX=clang++-19 cmake -B build -G Ninja
 RUN cmake --build build
 
 FROM ubuntu:24.04 AS runner

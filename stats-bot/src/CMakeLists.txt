@@ -1,18 +1,18 @@
-add_executable(down-detector)
+add_executable(stats-bot)
 
-target_sources(down-detector
+target_sources(stats-bot
 PRIVATE
     main.cpp
     stats.cpp
     bot.cpp
 )
 
-target_include_directories(down-detector
+target_include_directories(stats-bot
 PRIVATE
     ../include
 )
 
-target_link_libraries(down-detector
+target_link_libraries(stats-bot
 PRIVATE
     curl
     dpp
@@ -20,7 +20,7 @@ PRIVATE
     cppzmq
 )
 
-set_target_properties(down-detector 
+set_target_properties(stats-bot 
 PROPERTIES
     CXX_STANDARD 23
     CXX_STANDARD_REQUIRED ON

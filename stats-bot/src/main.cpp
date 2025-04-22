@@ -5,6 +5,7 @@
 
 int main()
 {
+    // the bot token is the only content in .env
     std::ifstream env{"/stats-bot/.env"};
     std::string token{};
     env >> token;
