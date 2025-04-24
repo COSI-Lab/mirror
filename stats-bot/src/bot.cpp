@@ -1,26 +1,29 @@
 #include <bot.hpp>
+#include <stats.hpp>
 
 #include <string>
 #include <vector>
 #include <iostream>
+#include <numeric>
+
 #include <dpp/dpp.h>
 #include <spdlog/spdlog.h>
 #include <zmq.hpp>
-#include <stats.hpp>
+#include <dpp/appcommand.h>
 
 constexpr std::string_view CHANNELS_FILE = "/stats-bot/channels.txt";
 constexpr int MANUAL_SYNC_PORT = 9281;
 
 void mirror::stats_bot::start(std::string token)
 {
-
-    std::cout << "token: " << token << "\n";
-    std::exit(EXIT_FAILURE);
-    
     dpp::cluster bot{token};
     init_logging(bot);
 
-    register_commands(bot);
+    bot.on_ready([&bot] (const dpp::ready_t& event)
+    {
+        register_commands(bot);
+    });
+
     bot.on_slashcommand([&bot](dpp::slashcommand_t command)
     {
         handle_command(bot, command);
@@ -32,6 +35,7 @@ void mirror::stats_bot::start(std::string token)
     std::thread sync{sync_listener, std::ref(bot)};
     sync.detach();
 
+    spdlog::info("Starting bot");
     bot.start(dpp::start_type::st_wait);
 }
 
@@ -87,7 +91,17 @@ void mirror::stats_bot::register_commands(dpp::cluster& bot)
         }
     );
     
-    bot.global_command_create(stats);
+    bot.global_command_create(stats, [](const dpp::confirmation_callback_t& callback)
+    {
+        if(callback.is_error())
+        {
+            spdlog::error("Failed creating global command.");
+        }
+        else
+        {
+            spdlog::info("Created commands");
+        }
+    });
 }
 
 void mirror::stats_bot::handle_command(dpp::cluster& bot, dpp::slashcommand_t& slash)
@@ -100,8 +114,12 @@ void mirror::stats_bot::handle_command(dpp::cluster& bot, dpp::slashcommand_t& s
         if(subcommand_name == "subscribe" || subcommand_name == "unsubscribe")
         {
             set_subscription_state(bot, slash, (subcommand_name == "subscribe") ? SubscriptionState::SUBSCRIBED : SubscriptionState::UNSUBSCRIBED);
+        } else if(subcommand_name == "view")
+        {
+            slash.reply(get_stats_string());
         }
     }
+
 }
 
 std::vector<std::string> get_subscribed_channels()
@@ -137,7 +155,7 @@ void remove_channel(std::string channel_id)
     std::vector<std::string> channels = get_subscribed_channels();
     std::ofstream file{std::string{CHANNELS_FILE}};
     for(int i = 0; i < channels.size(); i++) {
-        if(channels[i] == channel_id) {
+        if(channels[i] != channel_id) {
             file << channels[i] << "\n";
         }
     }
@@ -196,23 +214,32 @@ void mirror::stats_bot::stats_thread(dpp::cluster& bot)
             std::chrono::ceil<std::chrono::days>
             (std::chrono::system_clock::now()));
         
-        std::vector<StatsEntry> stats = get_stats();
-
-        long total_transfer = 0L;
-        StatsEntry top_project{"oops", 0};
-        for(int i = 0; i < stats.size(); i++)
-        {
-            total_transfer += stats[i].bytes_transferred;
-            if(stats[i].bytes_transferred > top_project.bytes_transferred)
-                top_project = stats[i];
-        }
-
-        std::string info = std::format("A total of {} bytes were transferred. \
-            The most popular project was {} ({} bytes).", total_transfer,
-            top_project.name, top_project.bytes_transferred);
-
-        broadcast(bot, std::string_view{info});
+        broadcast(bot, get_stats_string());
     }
+}
+
+std::string mirror::stats_bot::get_stats_string()
+{
+    spdlog::info("Pulling statistics...");
+        
+    std::vector<StatsEntry> stats = get_stats();
+    // long total_transfer = 0L;
+    // StatsEntry top_project{"oops", 0};
+    // for(int i = 0; i < stats.size(); i++)
+    // {
+    //     total_transfer += stats[i].bytes_transferred;
+    //     if(stats[i].bytes_transferred > top_project.bytes_transferred)
+    //         top_project = stats[i];
+    // }
+
+    StatsEntry top_project = *std::max_element(stats.begin(), stats.end());
+    long total_transfer = std::accumulate(stats.begin(), stats.end(), 0);
+
+    std::string info = std::format("A total of {} bytes were transferred. \
+        The most popular project was {} ({} bytes).", total_transfer,
+        top_project.name, top_project.bytes_transferred);
+
+    return info;
 }
 
 void mirror::stats_bot::sync_listener(dpp::cluster& bot)

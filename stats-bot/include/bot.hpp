@@ -16,7 +16,9 @@ void set_subscription_state(dpp::cluster& bot, dpp::slashcommand_t& slash, Subsc
 void listen(dpp::cluster& bot);
 void broadcast(dpp::cluster& bot, std::string_view msg);
 void stats_thread(dpp::cluster& bot);
+std::string get_stats_string();
 void sync_listener(dpp::cluster& bot);
+
 }
 
 #endif

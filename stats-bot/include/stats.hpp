@@ -18,6 +18,8 @@ class StatsEntry
     {
         this->name = name; this->bytes_transferred = bytes_transferred;
     }
+
+    operator long() const { return bytes_transferred; }
     std::string name;
     long bytes_transferred;
 };

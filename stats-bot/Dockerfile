@@ -12,10 +12,10 @@ RUN apt-get update && apt-get install -y \
     libz-dev \
     libzmq3-dev
 WORKDIR /stats-bot
-COPY ./src src
-COPY ./include include
 COPY ./cmake cmake
 COPY ./CMakeLists.txt CMakeLists.txt
+COPY ./src src
+COPY ./include include
 RUN CXX=clang++-19 cmake -B build -G Ninja
 RUN cmake --build build
 
@@ -24,10 +24,11 @@ RUN apt-get update && apt-get install -y \
     libcurl4 \
     iputils-ping \
     curl \
-    libopus0
+    libopus0 \
+    libzmq3-dev
 COPY --from=builder \
     /stats-bot/build/src/stats-bot \
-    /down-detector/bin/stats-bot
+    /stats-bot/bin/stats-bot
 COPY --from=builder \
     /stats-bot/build/_deps/dpp-build/library/libdpp.so \
     /lib/libdpp.so
@@ -36,4 +37,4 @@ COPY --from=builder \
     /lib/libspdlog.so
 COPY .env /stats-bot/.env
 RUN ldconfig
-ENTRYPOINT /stats-bot/bin/down-detector
+ENTRYPOINT ["/stats-bot/bin/stats-bot"]
