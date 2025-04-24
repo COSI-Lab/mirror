@@ -44,7 +44,7 @@ services:
     build: ./mirror-sync-scheduler
     container_name: mirror-sync-scheduler
     env_file:
-      - configs/sync-scheduler.env
+      - mirror-sync-scheduler/configs/sync-scheduler.env
     expose:
       - 9281
     volumes:
