@@ -62,6 +62,10 @@ class JobManager
         -> std::vector<::pid_t>;
     static auto interrupt_job(const ::pid_t processID) -> void;
     static auto kill_job(const ::pid_t processID) -> void;
+    static auto write_stream_to_file(
+        const std::string& logfileName,
+        const int          pipeFileDescriptor
+    ) -> bool;
 
   private: // Members
     std::map<::pid_t, SyncJob> m_ActiveJobs;

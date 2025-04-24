@@ -9,7 +9,6 @@
 
 // System Includes
 #include <asm/termbits.h>
-#include <sys/ioctl.h>
 #include <sys/types.h>
 #include <sys/wait.h>
 #include <unistd.h>
@@ -20,6 +19,7 @@
 #include <cerrno>
 #include <chrono>
 #include <csignal>
+#include <cstddef>
 #include <cstdio>
 #include <cstdlib>
 #include <cstring>
@@ -28,6 +28,7 @@
 #include <fstream>
 #include <iterator>
 #include <mutex>
+#include <optional>
 #include <random>
 #include <stop_token>
 #include <string>
@@ -192,25 +193,23 @@ auto JobManager::reap_processes() -> std::vector<::pid_t>
             if (isKnownJob && exitStatus == EXIT_SUCCESS)
             {
                 spdlog::info(
-                    "Project {} successfully synced! (pid: {})",
-                    m_ActiveJobs.at(childProcessID).jobName,
-                    childProcessID
+                    "Project {} successfully synced!",
+                    m_ActiveJobs.at(childProcessID).jobName
                 );
                 completedJobs.emplace_back(childProcessID);
             }
             else if (isKnownJob && exitStatus != EXIT_SUCCESS)
             {
-                const auto logFileNames
+                const auto [stdoutLogfile, stderrLogfile]
                     = this->write_streams_to_file(childProcessID);
 
                 spdlog::warn(
-                    "Project {} failed to sync! STDOUT and STDERR been written "
-                    "to {} and {}! Exit code: {} (pid: {})",
+                    "Project {} failed to sync! Attempted to write sync output "
+                    "to {} and {}. Exit code: {}",
                     m_ActiveJobs.at(childProcessID).jobName,
-                    logFileNames.first,
-                    logFileNames.second,
-                    exitStatus,
-                    childProcessID
+                    stdoutLogfile,
+                    stderrLogfile,
+                    exitStatus
                 );
                 completedJobs.emplace_back(childProcessID);
             }
@@ -244,8 +243,7 @@ auto JobManager::write_streams_to_file(const ::pid_t processID)
     static std::mt19937                  randomGenerator(randomDevice());
     static std::uniform_int_distribution distribution(1, 10000);
 
-    const auto logNumber    = distribution(randomGenerator);
-    const auto errorLogPath = std::filesystem::relative("error-logs");
+    const auto logNumber = distribution(randomGenerator);
 
     const auto stdoutLogFileName = std::format(
         "{}-{}-stdout.log",
@@ -259,38 +257,61 @@ auto JobManager::write_streams_to_file(const ::pid_t processID)
         logNumber
     );
 
-    static std::string streamContents;
+    const bool stdoutSuccess = write_stream_to_file(
+        stdoutLogFileName,
+        m_ActiveJobs.at(processID).stdoutPipe
+    );
 
+    const bool stderrSuccess = write_stream_to_file(
+        stderrLogFileName,
+        m_ActiveJobs.at(processID).stderrPipe
+    );
+
+    return { (stdoutSuccess ? stdoutLogFileName : ""),
+             (stderrSuccess ? stderrLogFileName : "") };
+}
+
+auto JobManager::write_stream_to_file(
+    const std::string& logfileName,
+    const int          pipeFileDescriptor
+) -> bool
+{
+    const auto    errorLogPath = std::filesystem::relative("error-logs");
+    std::ofstream logfileStream(errorLogPath / logfileName);
+
+    if (!logfileStream.good())
+    {
+        spdlog::error("Failed to open log file {}!", logfileName);
+
+        return false;
+    }
+
+    std::string streamContents;
     streamContents.resize(BUFSIZ);
 
-    // STDOUT
+    std::ptrdiff_t bytesRead = 1;
+
+    while (bytesRead != 0 && bytesRead != -1)
     {
-        ::read(
-            m_ActiveJobs.at(processID).stdoutPipe,
+        bytesRead = ::read(
+            pipeFileDescriptor,
             streamContents.data(),
             streamContents.size()
         );
 
-        std::ofstream stdoutLogFile(errorLogPath / stdoutLogFileName);
-        stdoutLogFile << streamContents;
+        // The buffer was filled
+        if (bytesRead == streamContents.size())
+        {
+            logfileStream << streamContents;
+        }
+        else // Fewer characters were read than the buffer could fit
+        {
+            streamContents.resize(bytesRead);
+            logfileStream << streamContents;
+        }
     }
 
-    streamContents.clear();
-    streamContents.resize(BUFSIZ);
-
-    // STDERR
-    {
-        ::read(
-            m_ActiveJobs.at(processID).stderrPipe,
-            streamContents.data(),
-            streamContents.size()
-        );
-
-        std::ofstream stderrLogFile(errorLogPath / stderrLogFileName);
-        stderrLogFile << streamContents;
-    }
-
-    return { stdoutLogFileName, stderrLogFileName };
+    return true;
 }
 
 // NOLINTNEXTLINE(*-no-recursion)
@@ -558,7 +579,7 @@ auto JobManager::start_job(
         argv.emplace_back(nullptr);
 
         spdlog::debug("Setting process group ID");
-        ::setpgid(0, 0);
+        //::setpgid(0, 0);
 
         spdlog::trace("Calling exec");
         ::execv(argv.at(0), argv.data());
