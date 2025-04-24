@@ -115,6 +115,14 @@ services:
     depends_on:
       - metrics
 
+  stats-bot:
+    build: ./stats-bot
+    container_name: stats-bot
+    networks:
+      - mirror
+    depends_on:
+      - metrics
+
 networks:
   mirror:
     external: true
