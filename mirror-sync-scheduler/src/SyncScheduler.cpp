@@ -20,6 +20,7 @@
 #include <ranges>
 #include <stdexcept>
 #include <string>
+#include <string_view>
 #include <thread>
 #include <utility>
 
@@ -179,6 +180,8 @@ auto SyncScheduler::start_sync(const std::string& projectName) -> bool
 
 auto SyncScheduler::manual_sync_loop() -> void
 {
+    using namespace std::string_view_literals;
+
     zmq::context_t socketContext {};
     zmq::socket_t  socket { socketContext, zmq::socket_type::rep };
 
@@ -223,6 +226,41 @@ auto SyncScheduler::manual_sync_loop() -> void
                         "FAILURE: Failed to start sync for {}",
                         projectName
                     )
+                ),
+                zmq::send_flags::none
+            );
+            continue;
+        }
+        else if (projectName == "all_projects")
+        {
+            bool allSyncsStarted = true;
+
+            for (const auto& [project, _] : m_ProjectCatalogue)
+            {
+                const bool syncStarted = SyncScheduler::start_sync(projectName);
+                allSyncsStarted        = allSyncsStarted && syncStarted;
+
+                if (!syncStarted)
+                {
+                    spdlog::error(
+                        "Failed to start manual sync for {}",
+                        projectName
+                    );
+                }
+            }
+
+            if (allSyncsStarted)
+            {
+                socket.send(
+                    zmq::message_t("SUCCESS: started syncing all projects"sv),
+                    zmq::send_flags::none
+                );
+                continue;
+            }
+
+            socket.send(
+                zmq::message_t(
+                    "FAILURE: Failed to start sync for some projects"sv
                 ),
                 zmq::send_flags::none
             );
