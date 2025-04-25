@@ -111,7 +111,7 @@ auto SyncDetails::compose_rsync_commands(const nlohmann::json& rsyncConfig)
 
         command.emplace_back(dest);
 
-        spdlog::trace("Options: {{ {} }}", fmt::join(command, ", "));
+        spdlog::trace("Sync Command: {{ {} }}", fmt::join(command, ", "));
     }
 
     return commands;
@@ -162,18 +162,20 @@ auto SyncDetails::handle_rsync_config(const nlohmann::json& project) -> void
 
 auto SyncDetails::handle_script_config(const nlohmann::json& project) -> void
 {
-    m_SyncsPerDay = project.at("script").at("syncs_per_day").get<std::size_t>();
+    const auto& scriptBlock = project.at("script");
 
-    std::vector<std::string> toReturn = { "/usr/bin/sh", "-c" };
-    toReturn.emplace_back(project.at("script").at("command"));
+    m_SyncsPerDay = scriptBlock.at("syncs_per_day").get<std::size_t>();
 
-    const std::vector<std::string> arguments
-        = project.at("script").value("arguments", std::vector<std::string> {});
+    std::vector<std::string> toReturn = { "/usr/bin/bash", "-c" };
 
-    for (const std::string& arg : arguments)
+    toReturn.emplace_back(scriptBlock.at("command"));
+
+    for (const auto& arg : scriptBlock.at("arguments"))
     {
-        toReturn.emplace_back(arg);
+        toReturn.back() = std::format("{} {}", toReturn.back(), arg.dump());
     }
+
+    spdlog::trace("Sync Command: {{ {} }}", fmt::join(toReturn, ", "));
 
     m_Commands.emplace_back(toReturn);
 }
