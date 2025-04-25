@@ -202,40 +202,43 @@ auto SyncScheduler::manual_sync_loop() -> void
         [[maybe_unused]]
         auto result
             = socket.recv(syncRequest, zmq::recv_flags::none);
-        const std::string projectName = syncRequest.to_string();
+        const std::string requestedProjectName = syncRequest.to_string();
 
-        spdlog::info("Manual sync requested for {}", projectName);
+        spdlog::info("Manual sync requested for {}", requestedProjectName);
 
-        if (m_ProjectCatalogue.contains(projectName))
+        if (m_ProjectCatalogue.contains(requestedProjectName))
         {
-            if (SyncScheduler::start_sync(projectName))
+            if (SyncScheduler::start_sync(requestedProjectName))
             {
                 socket.send(
                     zmq::message_t(
-                        std::format("SUCCESS: started sync for {}", projectName)
+                        std::format(
+                            "SUCCESS: started sync for {}",
+                            requestedProjectName
+                        )
                     ),
                     zmq::send_flags::none
                 );
                 continue;
             }
 
-            spdlog::error("Manual sync for {} failed", projectName);
+            spdlog::error("Manual sync for {} failed", requestedProjectName);
             socket.send(
                 zmq::message_t(
                     std::format(
                         "FAILURE: Failed to start sync for {}",
-                        projectName
+                        requestedProjectName
                     )
                 ),
                 zmq::send_flags::none
             );
             continue;
         }
-        else if (projectName == "all_projects")
+        else if (requestedProjectName == "all_projects")
         {
             bool allSyncsStarted = true;
 
-            for (const auto& [project, _] : m_ProjectCatalogue)
+            for (const auto& [projectName, _] : m_ProjectCatalogue)
             {
                 const bool syncStarted = SyncScheduler::start_sync(projectName);
                 allSyncsStarted        = allSyncsStarted && syncStarted;
@@ -244,7 +247,7 @@ auto SyncScheduler::manual_sync_loop() -> void
                 {
                     spdlog::error(
                         "Failed to start manual sync for {}",
-                        projectName
+                        requestedProjectName
                     );
                 }
             }
@@ -267,10 +270,13 @@ auto SyncScheduler::manual_sync_loop() -> void
             continue;
         }
 
-        spdlog::error("Project {} not found!", projectName);
+        spdlog::error("Project {} not found!", requestedProjectName);
         socket.send(
             zmq::message_t(
-                std::format("FAILURE: Project {} not found!", projectName)
+                std::format(
+                    "FAILURE: Project {} not found!",
+                    requestedProjectName
+                )
             ),
             zmq::send_flags::none
         );
