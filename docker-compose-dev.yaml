@@ -55,7 +55,7 @@ services:
       - "./mirror-sync-scheduler/secrets:/mirror/secrets:ro"
     networks:
       - mirror
-
+    tty: true
   # --- Torrent handler ---
   #  torrent-handler:
   #    build: ./mirror-torrent-handler

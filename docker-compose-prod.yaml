@@ -75,6 +75,7 @@ services:
       - "./secrets:/mirror/secrets:ro"
     networks:
       - mirror
+    tty: true
 
   # --- Torrent handler ---
   # torrent-handler:
