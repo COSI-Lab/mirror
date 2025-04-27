@@ -91,7 +91,7 @@ public class MirrorJsonValidator {
 			return false;
 		}
 
-		if (LAST_VALID.equals(mirrorsJson)) return false;
+		if (LAST_VALID != null && LAST_VALID.equals(mirrorsJson)) return false;
 
 		Set<ValidationMessage> errors = SCHEMA.validate(mirrorsJsonNode);
 		if (errors.isEmpty()) {

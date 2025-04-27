@@ -16,6 +16,18 @@ services:
     networks:
       - mirror
 
+  verifier:
+    build: ./mirror-verifier
+    container_name: mirror-verifier
+    restart: unless-stopped
+    ports:
+      - "27887:27887"
+      - "27886:27886"
+    volumes:
+      - "./configs:/mirror/configs:ro"
+    networks:
+      - mirror
+
   # --- Website ---
   website:
     build: ./mirror-website
