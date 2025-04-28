@@ -95,7 +95,7 @@ def sync(request: HttpRequest, project: str):
     reply = socket.recv()
     socket.close()
 
-    if str(reply.decode("utf-8")).startswith("SUCCESS"):
+    if reply.decode("utf-8").startswith("SUCCESS"):
         return HttpResponse(reply)
     else:
         return HttpResponseBadRequest(reply)
