@@ -41,7 +41,7 @@ services:
 
   # --- Sync scheduler ---
   sync-scheduler:
-    build: ./mirror-sync-scheduler
+    build: ./mirror-sync-scheduler  
     container_name: mirror-sync-scheduler
     env_file:
       - mirror-sync-scheduler/configs/sync-scheduler.env

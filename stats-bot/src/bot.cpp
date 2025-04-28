@@ -210,10 +210,10 @@ void mirror::stats_bot::stats_thread(dpp::cluster& bot)
 {
     while(true)
     {
+
         std::this_thread::sleep_until(
             std::chrono::ceil<std::chrono::days>
             (std::chrono::system_clock::now()));
-        
         broadcast(bot, get_stats_string());
     }
 }
@@ -223,23 +223,16 @@ std::string mirror::stats_bot::get_stats_string()
     spdlog::info("Pulling statistics...");
         
     std::vector<StatsEntry> stats = get_stats();
-    // long total_transfer = 0L;
-    // StatsEntry top_project{"oops", 0};
-    // for(int i = 0; i < stats.size(); i++)
-    // {
-    //     total_transfer += stats[i].bytes_transferred;
-    //     if(stats[i].bytes_transferred > top_project.bytes_transferred)
-    //         top_project = stats[i];
-    // }
 
-    StatsEntry top_project = *std::max_element(stats.begin(), stats.end());
+    if(stats.empty()) return "No projects were accessed :(";
+
+    auto top_project = std::max_element(stats.begin(), stats.end());
     long total_transfer = std::accumulate(stats.begin(), stats.end(), 0);
 
-    std::string info = std::format("A total of {} bytes were transferred. \
-        The most popular project was {} ({} bytes).", total_transfer,
-        top_project.name, top_project.bytes_transferred);
-
-    return info;
+    return std::string{"A total of "} + std::to_string(total_transfer) +
+        "bytes were transferred. The most popular project was " +
+        top_project->name + " (" +
+        std::to_string(top_project->bytes_transferred) + ").";
 }
 
 void mirror::stats_bot::sync_listener(dpp::cluster& bot)
@@ -252,8 +245,8 @@ void mirror::stats_bot::sync_listener(dpp::cluster& bot)
     {
         zmq::message_t request;
         auto res = socket.recv(request);
-        std::string sync_info = "Manual sync requested for ";
-        sync_info += request.str() + ".";
-        broadcast(bot, std::string_view{sync_info}); 
+        // if(res == zmq_resul)
+        std::string sync_info = "Manual sync requested for " + request.str() + ".";
+        broadcast(bot, std::string_view{sync_info});
     }
 }

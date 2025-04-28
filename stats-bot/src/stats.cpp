@@ -14,12 +14,27 @@ std::vector<mirror::stats_bot::StatsEntry> mirror::stats_bot::get_stats()
     nlohmann::json stats_json = get_statistics_json();
     std::vector<StatsEntry> stats_data{};
 
+    int num_entries = 0;
+    try
+    {
+        num_entries = stats_json["data"]["result"].size();
+    }
+    catch(nlohmann::json::type_error e)
+    {
+        spdlog::error(e.what());
+    }
 
-    int num_entries = stats_json["data"]["result"].size();
     for(int i = 0; i < num_entries; i++)
     {
-        nlohmann::json entry = stats_json["data"]["result"][i];
-        StatsEntry{entry["metric"]["project"], std::stol(entry["values"][1].dump())};
+        try
+        {
+            nlohmann::json entry = stats_json["data"]["result"][i];
+            StatsEntry{entry["metric"]["project"], std::stol(entry["values"][1].dump())};
+        }
+        catch(nlohmann::json::type_error e)
+        {
+            spdlog::error(e.what());
+        }
     }
 
     return stats_data;
@@ -33,6 +48,7 @@ std::atomic_int counter = 0;
  */
 nlohmann::json mirror::stats_bot::get_statistics_json()
 {
+    spdlog::info("Getting statistics json");
     CURL *curl = curl_easy_init();
     if(!curl)
     {
@@ -58,13 +74,28 @@ nlohmann::json mirror::stats_bot::get_statistics_json()
     {
         spdlog::error("cURL execution failed");
     }
+    else
+    {
+        spdlog::info(std::string{"cURL: "} + curl_easy_strerror(res));
+    }
 
     curl_easy_cleanup(curl);
 
-    nlohmann::json data{nlohmann::json::parse(stats_raw[*req_id])};
+    try
+    {
+        nlohmann::json data{nlohmann::json::parse(stats_raw[*req_id])};
+        stats_raw.erase(*req_id);
+        delete req_id;
+        return data;
+    }
+    catch(nlohmann::json::type_error e)
+    {
+        spdlog::error(e.what());
+    }
+    
     stats_raw.erase(*req_id);
     delete req_id;
-    return data;
+    return nlohmann::json{};
 }
 
 std::unordered_map<int, std::string> mirror::stats_bot::stats_raw{};

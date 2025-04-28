@@ -95,7 +95,13 @@ def sync(request: HttpRequest, project: str):
     reply = socket.recv()
     socket.close()
 
-    if reply.decode("utf-8").startswith("SUCCESS"):
+    _logger.info(str(reply))
+    if str(reply).startswith("SUCCESS"):
+        stats_context = zmq.Context()
+        stats_socket = stats_context.socket(zmq.REQ)
+        stats_socket.connect("tcp://stats-bot:9281")
+        stats_socket.send_string(project)
+        stats_socket.close()
         return HttpResponse(reply)
     else:
         return HttpResponseBadRequest(reply)
