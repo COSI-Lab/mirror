@@ -230,7 +230,7 @@ std::string mirror::stats_bot::get_stats_string()
     long total_transfer = std::accumulate(stats.begin(), stats.end(), 0);
 
     return std::string{"A total of "} + std::to_string(total_transfer) +
-        "bytes were transferred. The most popular project was " +
+        " bytes were transferred. The most popular project was " +
         top_project->name + " (" +
         std::to_string(top_project->bytes_transferred) + ").";
 }
@@ -245,8 +245,9 @@ void mirror::stats_bot::sync_listener(dpp::cluster& bot)
     {
         zmq::message_t request;
         auto res = socket.recv(request);
-        // if(res == zmq_resul)
-        std::string sync_info = "Manual sync requested for " + request.str() + ".";
+        socket.send(zmq::message_t{"okay!"});
+        // if(res)
+        std::string sync_info = "Manual sync requested for `" + request.to_string() + "`.";
         broadcast(bot, std::string_view{sync_info});
     }
 }
