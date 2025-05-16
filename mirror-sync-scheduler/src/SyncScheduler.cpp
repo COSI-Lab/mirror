@@ -247,7 +247,7 @@ auto SyncScheduler::manual_sync_loop() -> void
                 {
                     spdlog::error(
                         "Failed to start manual sync for {}",
-                        requestedProjectName
+                        projectName
                     );
                 }
             }
