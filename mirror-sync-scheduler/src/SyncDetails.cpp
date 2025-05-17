@@ -172,9 +172,9 @@ auto SyncDetails::handle_script_config(const nlohmann::json& project) -> void
 
     toReturn.back() = "\"";
 
-    for (const auto& arg : scriptBlock.at("arguments"))
+    for (const std::string arg : scriptBlock.at("arguments"))
     {
-        toReturn.back() = std::format("{} {}", toReturn.back(), arg.dump());
+        toReturn.back() = std::format("{} '{}'", toReturn.back(), arg);
     }
 
     toReturn.back() = "\"";
