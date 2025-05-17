@@ -172,8 +172,7 @@ auto JobManager::reap_processes() -> std::vector<::pid_t>
 
             spdlog::warn(
                 "Project {} has been syncing for at least {} hour{}. "
-                "Process "
-                "may be hanging, attempting to send SIGTERM. (pid: {})",
+                "Process may be hanging, attempting to send SIGTERM. (pid: {})",
                 m_ActiveJobs.at(childProcessID).jobName,
                 JOB_TIMEOUT.count(),
                 // if not one hour, plural
