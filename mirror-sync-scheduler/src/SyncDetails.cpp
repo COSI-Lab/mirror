@@ -168,16 +168,16 @@ auto SyncDetails::handle_script_config(const nlohmann::json& project) -> void
 
     std::vector<std::string> toReturn = { "/usr/bin/bash", "-c" };
 
-    toReturn.emplace_back(scriptBlock.at("command"));
+    toReturn.emplace_back("\"");
 
-    toReturn.back() = "\"";
+    toReturn.back() += scriptBlock.at("command");
 
     for (const std::string arg : scriptBlock.at("arguments"))
     {
         toReturn.back() = std::format("{} '{}'", toReturn.back(), arg);
     }
 
-    toReturn.back() = "\"";
+    toReturn.back() += "\"";
 
     spdlog::trace("Sync Command: {{ {} }}", fmt::join(toReturn, ", "));
 
