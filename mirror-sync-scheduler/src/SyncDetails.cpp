@@ -170,10 +170,14 @@ auto SyncDetails::handle_script_config(const nlohmann::json& project) -> void
 
     toReturn.emplace_back(scriptBlock.at("command"));
 
+    toReturn.back() = "\"";
+
     for (const auto& arg : scriptBlock.at("arguments"))
     {
         toReturn.back() = std::format("{} {}", toReturn.back(), arg.dump());
     }
+
+    toReturn.back() = "\"";
 
     spdlog::trace("Sync Command: {{ {} }}", fmt::join(toReturn, ", "));
 
