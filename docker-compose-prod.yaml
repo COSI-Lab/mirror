@@ -76,6 +76,10 @@ services:
     networks:
       - mirror
     tty: true
+    logging:
+      options:
+        max-size: 1g
+        max-file: 5
 
   # --- Torrent handler ---
   # torrent-handler:
