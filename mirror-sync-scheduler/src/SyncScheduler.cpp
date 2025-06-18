@@ -1,4 +1,4 @@
-a/**
+/**
  * @file SyncScheduler.cpp
  * @author Cary Keesler
  * @brief
