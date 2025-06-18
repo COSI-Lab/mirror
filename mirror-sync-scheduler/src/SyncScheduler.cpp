@@ -1,4 +1,4 @@
-/**
+a/**
  * @file SyncScheduler.cpp
  * @author Cary Keesler
  * @brief
@@ -144,7 +144,7 @@ auto SyncScheduler::start_sync(const std::string& projectName) -> bool
         return true;
     }
 
-    spdlog::info("Attempting sync for {}", projectName);
+    spdlog::debug("Attempting sync for {}", projectName);
 
     const auto& syncDetails     = m_ProjectCatalogue.at(projectName);
     bool        startSuccessful = false;
