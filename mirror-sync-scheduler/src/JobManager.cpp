@@ -8,6 +8,7 @@
 #include <mirror/sync_scheduler/JobManager.hpp>
 
 // System Includes
+#include <asm/termbits.h>
 #include <sys/types.h>
 #include <sys/wait.h>
 #include <unistd.h>
@@ -18,6 +19,7 @@
 #include <cerrno>
 #include <chrono>
 #include <csignal>
+#include <cstddef>
 #include <cstdio>
 #include <cstdlib>
 #include <cstring>
@@ -26,9 +28,12 @@
 #include <fstream>
 #include <iterator>
 #include <mutex>
+#include <optional>
+#include <random>
 #include <stop_token>
 #include <string>
 #include <thread>
+#include <utility>
 #include <vector>
 
 // Third Party Includes
@@ -70,7 +75,7 @@ auto JobManager::process_reaper(const std::stop_token& stopToken) -> void
             return;
         }
 
-        auto completedJobs = reap_processes();
+        auto completedJobs = this->reap_processes();
 
         this->deregister_jobs(completedJobs);
         completedJobs.clear();
@@ -167,8 +172,7 @@ auto JobManager::reap_processes() -> std::vector<::pid_t>
 
             spdlog::warn(
                 "Project {} has been syncing for at least {} hour{}. "
-                "Process "
-                "may be hanging, attempting to send SIGTERM. (pid: {})",
+                "Process may be hanging, attempting to send SIGTERM. (pid: {})",
                 m_ActiveJobs.at(childProcessID).jobName,
                 JOB_TIMEOUT.count(),
                 // if not one hour, plural
@@ -188,33 +192,39 @@ auto JobManager::reap_processes() -> std::vector<::pid_t>
             if (isKnownJob && exitStatus == EXIT_SUCCESS)
             {
                 spdlog::info(
-                    "Project {} successfully synced! (pid: {})",
-                    m_ActiveJobs.at(childProcessID).jobName,
-                    childProcessID
+                    "Project {} successfully synced!",
+                    m_ActiveJobs.at(childProcessID).jobName
                 );
                 completedJobs.emplace_back(childProcessID);
             }
             else if (isKnownJob && exitStatus != EXIT_SUCCESS)
             {
+                const auto [stdoutLogfile, stderrLogfile]
+                    = this->write_streams_to_file(childProcessID);
+
                 spdlog::warn(
-                    "Project {} failed to sync! Exit code: {} (pid: {})",
+                    "Project {} failed to sync! Attempted to write sync output "
+                    "to {} and {}. Exit code: {}",
                     m_ActiveJobs.at(childProcessID).jobName,
-                    exitStatus,
-                    childProcessID
+                    stdoutLogfile,
+                    stderrLogfile,
+                    exitStatus
                 );
                 completedJobs.emplace_back(childProcessID);
             }
             else if (!isKnownJob && exitStatus == EXIT_SUCCESS)
             {
                 spdlog::info(
-                    "Reaped successful unregistered child process with pid {}",
+                    "Reaped successful unregistered child process with pid "
+                    "{}",
                     childProcessID
                 );
             }
             else
             {
                 spdlog::warn(
-                    "Reaped unsuccessful unregistered child process with pid "
+                    "Reaped unsuccessful unregistered child process with "
+                    "pid "
                     "{}",
                     childProcessID
                 );
@@ -225,15 +235,95 @@ auto JobManager::reap_processes() -> std::vector<::pid_t>
     return completedJobs;
 }
 
+auto JobManager::write_streams_to_file(const ::pid_t processID)
+    -> std::pair<std::string, std::string>
+{
+    static std::random_device            randomDevice;
+    static std::mt19937                  randomGenerator(randomDevice());
+    static std::uniform_int_distribution distribution(1, 10000);
+
+    const auto logNumber = distribution(randomGenerator);
+
+    const auto stdoutLogFileName = std::format(
+        "{}-{}-stdout.log",
+        m_ActiveJobs.at(processID).jobName,
+        logNumber
+    );
+
+    const auto stderrLogFileName = std::format(
+        "{}-{}-stderr.log",
+        m_ActiveJobs.at(processID).jobName,
+        logNumber
+    );
+
+    const bool stdoutSuccess = write_stream_to_file(
+        stdoutLogFileName,
+        m_ActiveJobs.at(processID).stdoutPipe
+    );
+
+    const bool stderrSuccess = write_stream_to_file(
+        stderrLogFileName,
+        m_ActiveJobs.at(processID).stderrPipe
+    );
+
+    return { (stdoutSuccess ? stdoutLogFileName : ""),
+             (stderrSuccess ? stderrLogFileName : "") };
+}
+
+auto JobManager::write_stream_to_file(
+    const std::string& logfileName,
+    const int          pipeFileDescriptor
+) -> bool
+{
+    const auto    errorLogPath = std::filesystem::relative("error-logs");
+    std::ofstream logfileStream(errorLogPath / logfileName);
+
+    if (!logfileStream.good())
+    {
+        spdlog::error("Failed to open log file {}!", logfileName);
+
+        return false;
+    }
+
+    std::string streamContents;
+    streamContents.resize(BUFSIZ);
+
+    std::ptrdiff_t bytesRead = 1;
+
+    while (bytesRead != 0 && bytesRead != -1)
+    {
+        bytesRead = ::read(
+            pipeFileDescriptor,
+            streamContents.data(),
+            streamContents.size()
+        );
+
+        // The buffer was filled
+        if (bytesRead == streamContents.size())
+        {
+            logfileStream << streamContents;
+        }
+        else // Fewer characters were read than the buffer could fit
+        {
+            streamContents.resize(bytesRead);
+            logfileStream << streamContents;
+        }
+    }
+
+    return true;
+}
+
 // NOLINTNEXTLINE(*-no-recursion)
 auto JobManager::interrupt_job(const ::pid_t processID) -> void
 {
-    // Interrupt child processes recursively. Starts with the grandest child and
-    // works its way back up to the direct decendant of the sync scheduler
+    // Interrupt child processes recursively. Starts with the grandest child
+    // and works its way back up to the direct descendant of the sync
+    // scheduler
     //
-    // Base case: process with no children. `get_child_process_ids` will be an
-    // empty collection meaning nothing to iterate over
-    for (const ::pid_t childProcessID : JobManager::get_child_process_ids())
+    // Base case: process with no children. `get_child_process_ids` will be
+    // an empty collection meaning nothing to iterate over
+    for (const ::pid_t childProcessID :
+         JobManager::get_child_process_ids(processID))
     {
         JobManager::interrupt_job(childProcessID);
     }
@@ -377,6 +467,9 @@ auto JobManager::deregister_jobs(const std::vector<::pid_t>& completedJobs)
     const std::lock_guard<std::mutex> jobLock(m_JobMutex);
     for (const auto& job : completedJobs)
     {
+        ::close(m_ActiveJobs.at(job).stderrPipe);
+        ::close(m_ActiveJobs.at(job).stdoutPipe);
+
         m_ActiveJobs.erase(job);
     }
 }
@@ -384,7 +477,7 @@ auto JobManager::deregister_jobs(const std::vector<::pid_t>& completedJobs)
 // NOLINTBEGIN(*-easily-swappable-parameters)
 auto JobManager::start_job(
     const std::string&           jobName,
-    std::string                  command,
+    std::vector<std::string>     command,
     const std::filesystem::path& passwordFile
 ) -> bool
 // NOLINTEND(*-easily-swappable-parameters)
@@ -409,7 +502,8 @@ auto JobManager::start_job(
         std::string errorMessage(BUFSIZ, '\0');
 
         spdlog::warn(
-            "Failed to create pipe for child stdout while syncing project {}! "
+            "Failed to create pipe for child stdout while syncing project "
+            "{}! "
             "Error message: {}",
             jobName,
             // NOLINTNEXTLINE(*-include-cleaner)
@@ -424,7 +518,8 @@ auto JobManager::start_job(
         std::string errorMessage(BUFSIZ, '\0');
 
         spdlog::warn(
-            "Failed to create pipe for child stderr while syncing project {}! "
+            "Failed to create pipe for child stderr while syncing project "
+            "{}! "
             "Error message: {}",
             jobName,
             // NOLINTNEXTLINE(*-include-cleaner)
@@ -469,20 +564,21 @@ auto JobManager::start_job(
             );
         }
 
-        //! ::strdup allocates memory with ::malloc. Typically this memory
-        //! should be ::free'd. However, argv is supposed to have the same
-        //! lifetime as the process it belongs to, therefore the memory should
-        //! never be freed and we do not need to maintain a copy of the pointer
-        //! to free it at a later time
-        // NOLINTBEGIN(*-include-cleaner)
-        const std::array<char*, 4> argv { ::strdup("/bin/sh"),
-                                          ::strdup("-c"),
-                                          ::strdup(command.data()),
-                                          nullptr };
-        // NOLINTEND(*-include-cleaner)
+        std::vector<char*> argv;
+        argv.resize(command.size() + 1);
+
+        std::transform(
+            std::begin(command),
+            std::end(command),
+            std::begin(argv),
+            [](std::string& str) { return std::data(str); }
+        );
+
+        // Last item in argv has to be a nullptr;
+        argv.emplace_back(nullptr);
 
         spdlog::debug("Setting process group ID");
-        ::setpgid(0, 0);
+        //::setpgid(0, 0);
 
         spdlog::trace("Calling exec");
         ::execv(argv.at(0), argv.data());
@@ -491,7 +587,8 @@ auto JobManager::start_job(
         std::string errorMessage(BUFSIZ, '\0');
 
         spdlog::error(
-            "Call to execv() failed while trying to sync {}! Error message: {}",
+            "Call to execv() failed while trying to sync {}! Error "
+            "message: {}",
             jobName,
             // NOLINTNEXTLINE(*-include-cleaner)
             ::strerror_r(errno, errorMessage.data(), errorMessage.size())
@@ -520,7 +617,7 @@ auto JobManager::start_job(
     // Close write end of the stderr pipe in the parent process
     ::close(stderrPipes.at(1));
 
-    this->register_job(jobName, pid, stdoutPipes.at(1), stderrPipes.at(1));
+    this->register_job(jobName, pid, stdoutPipes.at(0), stderrPipes.at(0));
     return true;
 }
 } // namespace mirror::sync_scheduler

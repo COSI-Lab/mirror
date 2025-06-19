@@ -38,7 +38,7 @@ class JobManager
   public: // Methods
     auto start_job(
         const std::string&           jobName,
-        std::string                  command,
+        std::vector<std::string>     command,
         const std::filesystem::path& passwordFile
     ) -> bool;
 
@@ -53,6 +53,8 @@ class JobManager
     auto kill_all_jobs() -> void;
     auto reap_processes() -> std::vector<::pid_t>;
     auto deregister_jobs(const std::vector<::pid_t>& completedJobs) -> void;
+    auto write_streams_to_file(const ::pid_t processID)
+        -> std::pair<std::string, std::string>;
     auto process_reaper(const std::stop_token& stopToken) -> void;
 
   private: // Static Methods
@@ -60,6 +62,10 @@ class JobManager
         -> std::vector<::pid_t>;
     static auto interrupt_job(const ::pid_t processID) -> void;
     static auto kill_job(const ::pid_t processID) -> void;
+    static auto write_stream_to_file(
+        const std::string& logfileName,
+        const int          pipeFileDescriptor
+    ) -> bool;
 
   private: // Members
     std::map<::pid_t, SyncJob> m_ActiveJobs;
