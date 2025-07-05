@@ -353,29 +353,29 @@ auto JobManager::interrupt_job(const ::pid_t processID) -> void
 
     spdlog::debug("Successfully sent process {} a SIGTERM", processID);
 
-    constexpr auto SIGTERM_TIMEOUT = std::chrono::seconds(30);
-    const auto     start           = std::chrono::system_clock::now();
-    auto           now             = start;
+    /*     constexpr auto SIGTERM_TIMEOUT = std::chrono::seconds(30);
+        const auto     start           = std::chrono::system_clock::now();
+        auto           now             = start;
 
-    while ((now - start) < SIGTERM_TIMEOUT)
-    {
-        const int waitReturn = ::waitpid(processID, nullptr, WNOHANG);
-
-        if (waitReturn == processID)
+        while ((now - start) < SIGTERM_TIMEOUT)
         {
-            spdlog::trace("Process {} successfully reaped", processID);
-            return;
+            const int waitReturn = ::waitpid(processID, nullptr, WNOHANG);
+
+            if (waitReturn == processID)
+            {
+                spdlog::trace("Process {} successfully reaped", processID);
+                return;
+            }
+
+            constexpr auto CHECK_INTERVAL = std::chrono::milliseconds(100);
+            std::this_thread::sleep_for(CHECK_INTERVAL);
+
+            now = std::chrono::system_clock::now();
         }
 
-        constexpr auto CHECK_INTERVAL = std::chrono::milliseconds(100);
-        std::this_thread::sleep_for(CHECK_INTERVAL);
+        spdlog::error("Failed to terminate process {} with SIGTERM", processID);
 
-        now = std::chrono::system_clock::now();
-    }
-
-    spdlog::error("Failed to terminate process {} with SIGTERM", processID);
-
-    JobManager::kill_job(processID);
+        JobManager::kill_job(processID); */
 }
 
 auto JobManager::job_is_running(const std::string& jobName) -> bool
@@ -409,6 +409,8 @@ auto JobManager::kill_job(const ::pid_t processID) -> void
             // NOLINTNEXTLINE(*-include-cleaner)
             ::strerror_r(errno, errorMessage.data(), errorMessage.size())
         );
+
+        return;
     }
 
     const int waitReturn = ::waitpid(processID, nullptr, 0);
