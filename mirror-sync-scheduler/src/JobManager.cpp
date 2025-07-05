@@ -82,7 +82,7 @@ auto JobManager::process_reaper(const std::stop_token& stopToken) -> void
     }
 }
 
-auto JobManager::get_child_process_ids(const ::pid_t processID = ::getpid())
+auto JobManager::get_child_process_ids(const ::pid_t processID)
     -> std::vector<::pid_t>
 {
     static const std::filesystem::path taskDirectory
@@ -123,8 +123,6 @@ auto JobManager::reap_processes() -> std::vector<::pid_t>
 {
     std::string errorMessage(BUFSIZ, '\0');
 
-    static const ::pid_t syncSchedulerProcessID = ::getpid();
-
     std::vector<::pid_t> completedJobs;
     completedJobs.reserve(m_ActiveJobs.size());
 
@@ -138,7 +136,7 @@ auto JobManager::reap_processes() -> std::vector<::pid_t>
 
         int                status      = 0;
         const bool         isKnownJob  = m_ActiveJobs.contains(childProcessID);
-        constexpr auto     JOB_TIMEOUT = std::chrono::hours(6);
+        constexpr auto     JOB_TIMEOUT = std::chrono::hours(1);
         std::chrono::hours syncDuration;
 
         // NOLINTNEXTLINE(misc-include-cleaner)

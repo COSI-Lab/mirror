@@ -58,7 +58,7 @@ class JobManager
     auto process_reaper(const std::stop_token& stopToken) -> void;
 
   private: // Static Methods
-    static auto get_child_process_ids(const ::pid_t processID)
+    static auto get_child_process_ids(const ::pid_t processID = ::getpid())
         -> std::vector<::pid_t>;
     static auto interrupt_job(const ::pid_t processID) -> void;
     static auto kill_job(const ::pid_t processID) -> void;
