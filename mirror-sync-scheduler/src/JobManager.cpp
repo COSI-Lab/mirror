@@ -353,6 +353,8 @@ auto JobManager::interrupt_job(const ::pid_t processID) -> void
 
     spdlog::debug("Successfully sent process {} a SIGTERM", processID);
 
+    // TODO: Handle asynchronously instead of commenting out. Also find some way
+    // to account for process possibly being reaped by its parent
     /*     constexpr auto SIGTERM_TIMEOUT = std::chrono::seconds(30);
         const auto     start           = std::chrono::system_clock::now();
         auto           now             = start;
