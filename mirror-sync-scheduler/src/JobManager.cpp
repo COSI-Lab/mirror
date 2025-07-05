@@ -516,8 +516,7 @@ auto JobManager::start_job(
         std::string errorMessage(BUFSIZ, '\0');
 
         spdlog::warn(
-            "Failed to create pipe for child stderr while syncing project "
-            "{}! "
+            "Failed to create pipe for child stderr while syncing project {}! "
             "Error message: {}",
             jobName,
             // NOLINTNEXTLINE(*-include-cleaner)
