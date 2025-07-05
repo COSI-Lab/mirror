@@ -89,6 +89,12 @@ auto JobManager::get_child_process_ids(const ::pid_t processID)
         = std::filesystem::absolute(std::format("/proc/{}/task/", processID));
 
     std::vector<::pid_t> childProcesses = {};
+
+    spdlog::trace(
+        "Gathering child process ids for process with pid {}",
+        processID
+    );
+
     for (const auto& taskEntry :
          std::filesystem::directory_iterator(taskDirectory))
     {
@@ -320,6 +326,8 @@ auto JobManager::interrupt_job(const ::pid_t processID) -> void
     //
     // Base case: process with no children. `get_child_process_ids` will be
     // an empty collection meaning nothing to iterate over
+    spdlog::trace("Interrupting job with pid {}", processID);
+
     for (const ::pid_t childProcessID :
          JobManager::get_child_process_ids(processID))
     {
