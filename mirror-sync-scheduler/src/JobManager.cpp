@@ -85,7 +85,7 @@ auto JobManager::process_reaper(const std::stop_token& stopToken) -> void
 auto JobManager::get_child_process_ids(const ::pid_t processID)
     -> std::vector<::pid_t>
 {
-    static const std::filesystem::path taskDirectory
+    const std::filesystem::path taskDirectory
         = std::filesystem::absolute(std::format("/proc/{}/task/", processID));
 
     std::vector<::pid_t> childProcesses = {};
