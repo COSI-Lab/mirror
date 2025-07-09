@@ -142,7 +142,7 @@ auto JobManager::reap_processes() -> std::vector<::pid_t>
 
         int                status      = 0;
         const bool         isKnownJob  = m_ActiveJobs.contains(childProcessID);
-        constexpr auto     JOB_TIMEOUT = std::chrono::hours(1);
+        constexpr auto     JOB_TIMEOUT = std::chrono::hours(3);
         std::chrono::hours syncDuration;
 
         // NOLINTNEXTLINE(misc-include-cleaner)
