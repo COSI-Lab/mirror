@@ -49,15 +49,13 @@ services:
       - 9281
     volumes:
       - "./mirror-sync-scheduler/storage:/storage"
+      - "./mirror-sync-scheduler/error-logs:/mirror/error-logs"
       - "./mirror-sync-scheduler/configs:/mirror/configs:ro"
       - "./mirror-sync-scheduler/scripts:/mirror/scripts:ro"
+      - "./mirror-sync-scheduler/secrets:/mirror/secrets:ro"
     networks:
       - mirror
-    depends_on:
-      - log-server
-    stdin_open: true
     tty: true
-
   # --- Torrent handler ---
   #  torrent-handler:
   #    build: ./mirror-torrent-handler

@@ -40,7 +40,7 @@ class SyncDetails
     }
 
     [[nodiscard]]
-    auto get_commands() const -> std::vector<std::string>
+    auto get_commands() const -> std::vector<std::vector<std::string>>
     {
         return m_Commands;
     }
@@ -48,18 +48,20 @@ class SyncDetails
   private: // Methods
     [[nodiscard]]
     static auto compose_rsync_commands(const nlohmann::json& rsyncConfig)
+        -> std::vector<std::vector<std::string>>;
+
+    static auto handle_rsync_options_array(const nlohmann::json& optionsArray)
         -> std::vector<std::string>;
 
     auto handle_sync_config(const nlohmann::json& project) -> void;
 
     auto handle_rsync_config(const nlohmann::json& project) -> void;
-
     auto handle_script_config(const nlohmann::json& project) -> void;
 
   private: // Members
-    std::size_t                          m_SyncsPerDay;
-    std::optional<std::filesystem::path> m_PasswordFile;
-    std::vector<std::string>             m_Commands;
+    std::size_t                           m_SyncsPerDay;
+    std::optional<std::filesystem::path>  m_PasswordFile;
+    std::vector<std::vector<std::string>> m_Commands;
 };
 
 struct static_project_exception : std::runtime_error
