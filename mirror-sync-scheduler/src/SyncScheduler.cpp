@@ -125,11 +125,15 @@ auto SyncScheduler::generate_project_catalogue(const nlohmann::json& mirrors)
         }
         catch (static_project_exception& spe)
         {
-            spdlog::trace(std::format("Project {}: {}", name, spe.what()));
+            spdlog::trace("{}: {}", name, spe.what());
         }
         catch (std::runtime_error& re)
         {
-            spdlog::error(std::format("Project {}: {}", name, re.what()));
+            spdlog::error("{}: {}", name, re.what());
+        }
+        catch (std::exception& e)
+        {
+            spdlog::error("{}: {}", name, e.what());
         }
     }
 
