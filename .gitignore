@@ -5,3 +5,4 @@ GeoLite2City
 config/sync/secrets
 *.secret
 .DS_Store
+storage
