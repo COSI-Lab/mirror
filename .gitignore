@@ -2,7 +2,7 @@
 build/*
 GeoLite2City
 .env
-config/sync/secrets
+config/sync/secrets/*
 *.secret
 .DS_Store
 storage
