@@ -1,0 +1,42 @@
+// This component is responsible for disovering new containers within the docker environment
+discovery.docker "mirror" {
+	host = "unix:///var/run/docker.sock"
+	refresh_interval = "5s"
+}
+
+// This component is responsible for relabeling the discovered containers
+discovery.relabel "mirror" {
+	targets = []
+
+	rule {
+		source_labels = ["__meta_docker_container_name"]
+		regex         = "/(.*)"
+		target_label  = "container"
+	}
+}
+
+// This component is responsible for collecting logs from the discovered containers
+loki.source.docker "mirror" {
+	host             = "unix:///var/run/docker.sock"
+	targets          = discovery.docker.mirror.targets
+	forward_to       = [loki.process.mirror.receiver]
+	relabel_rules    = discovery.relabel.mirror.rules
+	refresh_interval = "5s"
+}
+
+// This component is responsible for processing the logs (In this case adding static labels)
+loki.process "mirror" {
+    forward_to = [loki.write.mirror.receiver]
+}
+
+// This component is responsible for writing the logs to Loki
+loki.write "mirror" {
+	endpoint {
+		url  = "http://loki:3100/loki/api/v1/push"
+	}
+}
+
+// Enables the ability to view logs in the Alloy UI in realtime
+livedebugging {
+  enabled = true
+}
