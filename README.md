@@ -3,10 +3,9 @@
 Software for Clarkson University's open source mirror.
 
 # Features
-- All mirrors are configured in `configs/mirrors.json`
+- All mirrors are configured in `config/sync/configs/mirrors.json`
 - Sync scheduler to keep mirrors up to date
 - Website with a list of mirrors and general info
-- Metrics by project
 - Live map of downloads
 
 # Building
@@ -20,14 +19,14 @@ machine. At the repository root, run `make dev`. This will use the development
 docker compose configuration and run each module with the configs located in
 the module's directory.
 
-To emulate a production environment, make sure the directories `/storage`
-and `/var/log/nginx` exist. Also, make sure configs exist in the `configs`
-directory at the repository root. Run `make prod` to use the production docker
-compose configuration and run each module as if it was running on Mirror.
+To configure some sensitive settings for modules, you will need to create a `.env` file.
+`.env.example` includes some sane defaults for a *testing* environment. At the very least you should
+change the `WEB_DJANGO_SECRET` before deploying.
 
-To make sure your environment is set up correctly, run `check-env.py`. This
-script will check for packages, libraries, and directories needed for both a
-development and production environment for Mirror.
+To emulate a production environment, make sure the directories `/storage` exists.
+Also, make sure to edit `mirrors.json` in `config/sync/configs/`.
+Run `make prod` to use the production docker compose configuration and run each module
+as if it was running on Mirror.
 
 We currently use the development configuration on our personal machines and
 the production configuration on a test server. Both are frequently tested.
@@ -58,8 +57,6 @@ great place. If you need help or have questions about contributing, please
 >
 > - The website serves pages to visitors of mirror.clarkson.edu.
 >
-> - The metrics engine collects data about how Mirror is used.
->
 > - The map module sends data from the metrics engine over a websocket, adding
 >   approximate locations to it.
 >
@@ -86,6 +83,6 @@ great place. If you need help or have questions about contributing, please
 
 # Attributions
 
-This product includes GeoLite2 data created by MaxMind, available from
+This product uses GeoLite2 data created by MaxMind, available from
 <a href="https://www.maxmind.com">https://www.maxmind.com</a>. This data is used
 to populate the Map page as project files are downloaded.

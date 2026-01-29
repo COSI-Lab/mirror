@@ -1,2 +1,2 @@
-default:
-	docker compose up --build -d --remove-orphans
+dev:
+	docker compose -f compose.dev.yaml up --build -d --remove-orphans

@@ -4,3 +4,4 @@ GeoLite2City
 .env
 config/sync/secrets
 *.secret
+.DS_Store
