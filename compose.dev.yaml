@@ -91,7 +91,7 @@ services:
       - GF_AUTH_ANONYMOUS_ENABLED=true
       - GF_AUTH_BASIC_ENABLED=false
     ports:
-      - 3000:3000/tcp
+      - 127.0.0.1:3000:3000/tcp
     # TODO: Break out provisioning into a config file?
     # TODO: Persist grafana configuration (/var/lib/grafana)
     entrypoint:
