@@ -161,4 +161,4 @@ DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
 
 MIRRORS_FILE = "/configs/mirrors.json"
 
-SYNC_TOKENS_FILE = "/secrets/sync-tokens.json"
+SYNC_TOKENS_FILE = "/configs/sync-tokens.json"
