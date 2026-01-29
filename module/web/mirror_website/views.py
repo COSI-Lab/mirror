@@ -88,9 +88,11 @@ def sync(request: HttpRequest, project: str):
 
     _logger.info("Manual sync requested for project %s", project)
 
+    # BUG: on newly initialized containers, zmq.Context() may hang
+    # pyzmq devs have marked as wontfix https://github.com/zeromq/pyzmq/issues/1224
     context = zmq.Context()
     socket = context.socket(zmq.REQ)
-    socket.connect("tcp://sync-scheduler:9281")
+    socket.connect("tcp://sync:9281")
     socket.send_string(project)
     reply = socket.recv()
     socket.close()
