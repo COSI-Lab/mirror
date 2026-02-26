@@ -1,6 +1,6 @@
 [submodule "config/sync/scripts/quick-fedora-mirror"]
 	path = config/sync/scripts/quick-fedora-mirror
-	url = https://pagure.io/quick-fedora-mirror.git
+	url = https://github.com/COSI-Lab/quick-fedora-mirror.git
 [submodule "config/sync/scripts/archvsync"]
 	path = config/sync/scripts/archvsync
 	url = https://github.com/COSI-Lab/archvsync.git
