@@ -95,6 +95,7 @@ services:
     volumes:
       - ./config/ds.yaml:/etc/grafana/provisioning/datasources/ds.yaml:ro
       - grafana:/var/lib/grafana
+    entrypoint: /run.sh
     networks:
       - loki
 

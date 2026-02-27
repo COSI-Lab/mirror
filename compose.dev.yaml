@@ -94,6 +94,7 @@ services:
       - 127.0.0.1:3000:3000/tcp
     volumes:
       - ./config/ds.yaml:/etc/grafana/provisioning/datasources/ds.yaml:ro
+    entrypoint: /run.sh
     networks:
       - loki
 
