@@ -202,8 +202,7 @@ auto JobManager::reap_processes() -> std::vector<::pid_t>
                     = this->write_fail_to_file(childProcessID);
 
                 spdlog::warn(
-                    "Project {} failed to sync! Output of from the "
-                    "process has been written to {}! Exit code: {} (pid: {})",
+                    "Project {} failed to sync! See {}. Exit code: {} (pid: {})",
                     m_ActiveJobs.at(childProcessID).jobName,
                     logFileName,
                     exitStatus,
@@ -420,6 +419,7 @@ auto JobManager::deregister_jobs(const std::vector<::pid_t>& completedJobs)
     const std::lock_guard<std::mutex> jobLock(m_JobMutex);
     for (const auto& job : completedJobs)
     {
+        ::close(m_ActiveJobs.at(job).stdPipe);
         m_ActiveJobs.erase(job);
     }
 }
@@ -465,8 +465,6 @@ auto JobManager::start_job(
     {
         // Close read end of the stdout/stderr pipe in the child process
         ::close(stdPipes.at(0));
-        ::dup2(stdPipes.at(1), STDOUT_FILENO);
-        ::dup2(stdPipes.at(1), STDERR_FILENO);
 
         if (std::filesystem::exists(passwordFile)
             && std::filesystem::is_regular_file(passwordFile))
@@ -508,11 +506,31 @@ auto JobManager::start_job(
         spdlog::debug("Setting process group ID");
         ::setpgid(0, 0);
 
+        // not quite yet :)
         spdlog::trace("Calling exec");
+
+        // store the current stdout and stderr in case we need to restore them
+        const int oldStdout = ::dup(STDOUT_FILENO);
+        const int oldStderr = ::dup(STDERR_FILENO);
+
+        // from now on send stdout and stderr to the pipe
+        ::dup2(stdPipes.at(1), STDOUT_FILENO);
+        ::dup2(stdPipes.at(1), STDERR_FILENO);
+
+        // and call exec
         ::execv(argv.at(0), argv.data());
 
         // If we get here `::execv()` failed
         std::string errorMessage(BUFSIZ, '\0');
+
+        // restore stdout and stderr so we can log the message
+        ::dup2(oldStdout,STDOUT_FILENO);
+        ::dup2(oldStderr,STDERR_FILENO);
+
+        // close unused fds
+        ::close(oldStdout);
+        ::close(oldStderr);
+        ::close(stdPipes.at(1));
 
         spdlog::error(
             "Call to execv() failed while trying to sync {}! Error message: {}",
