@@ -15,8 +15,8 @@ namespace mirror::sync_scheduler
 struct SyncJob
 {
     std::string                                        jobName    = "";
-    int                                                stdoutPipe = -1;
-    int                                                stderrPipe = -1;
+    // merged stdout and stderr
+    int                                                stdPipe = -1;
     std::chrono::time_point<std::chrono::system_clock> startTime;
 };
 } // namespace mirror::sync_scheduler

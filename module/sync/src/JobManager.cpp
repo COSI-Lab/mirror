@@ -343,8 +343,7 @@ auto JobManager::kill_all_jobs() -> void
 auto JobManager::register_job(
     const std::string& jobName,
     const ::pid_t      processID,
-    const int          stdoutPipe,
-    const int          stderrPipe
+    const int          stdPipe
 ) -> void
 {
     spdlog::debug(
@@ -357,8 +356,7 @@ auto JobManager::register_job(
     m_ActiveJobs.emplace(
         processID,
         SyncJob { .jobName    = jobName,
-                  .stdoutPipe = stdoutPipe,
-                  .stderrPipe = stderrPipe,
+                  .stdPipe = stdPipe,
                   .startTime  = std::chrono::system_clock::now() }
     );
 }
@@ -399,33 +397,17 @@ auto JobManager::start_job(
         return false;
     }
 
-    std::array<int, 2> stdoutPipes = { -1, -1 };
-    std::array<int, 2> stderrPipes = { -1, -1 };
+    std::array<int, 2> stdPipes = { -1, -1 };
 
-    int status = ::pipe(stdoutPipes.data());
-
-    if (status != 0)
-    {
-        std::string errorMessage(BUFSIZ, '\0');
-
-        spdlog::warn(
-            "Failed to create pipe for child stdout while syncing project {}! "
-            "Error message: {}",
-            jobName,
-            // NOLINTNEXTLINE(*-include-cleaner)
-            ::strerror_r(errno, errorMessage.data(), errorMessage.size())
-        );
-    }
-
-    status = ::pipe(stderrPipes.data());
+    int status = ::pipe(stdPipes.data());
 
     if (status != 0)
     {
         std::string errorMessage(BUFSIZ, '\0');
 
         spdlog::warn(
-            "Failed to create pipe for child stderr while syncing project {}! "
-            "Error message: {}",
+            "Failed to create pipe for child stdout/stderr while syncing "
+            "project {}! Error message: {}",
             jobName,
             // NOLINTNEXTLINE(*-include-cleaner)
             ::strerror_r(errno, errorMessage.data(), errorMessage.size())
@@ -436,13 +418,10 @@ auto JobManager::start_job(
 
     if (pid == 0) // Child Process
     {
-        // Close read end of the stdout pipe in the child process
-        ::close(stdoutPipes.at(0));
-        ::dup2(stdoutPipes.at(1), STDOUT_FILENO);
-
-        // Close read end of the stderr pipe in the child process
-        ::close(stderrPipes.at(0));
-        ::dup2(stderrPipes.at(1), STDERR_FILENO);
+        // Close read end of the stdout/stderr pipe in the child process
+        ::close(stdPipes.at(0));
+        ::dup2(stdPipes.at(1), STDOUT_FILENO);
+        ::dup2(stdPipes.at(1), STDERR_FILENO);
 
         if (std::filesystem::exists(passwordFile)
             && std::filesystem::is_regular_file(passwordFile))
@@ -514,13 +493,10 @@ auto JobManager::start_job(
         return false;
     }
 
-    // Close write end of the stdout pipe in the parent process
-    ::close(stdoutPipes.at(1));
+    // Close write end of the stdout/stderr pipe in the parent process
+    ::close(stdPipes.at(1));
 
-    // Close write end of the stderr pipe in the parent process
-    ::close(stderrPipes.at(1));
-
-    this->register_job(jobName, pid, stdoutPipes.at(1), stderrPipes.at(1));
+    this->register_job(jobName, pid, stdPipes.at(0));
     return true;
 }
 } // namespace mirror::sync_scheduler
