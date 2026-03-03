@@ -29,16 +29,6 @@ loki.process "mirror" {
     forward_to = [loki.write.mirror.receiver]
 }
 
-// this ingests sync error log files from the sync scheduler
-local.file_match "sync-errors" {
-  path_targets = [{"__path__" = "/var/log/sync-errors/*.log"}]
-}
-
-loki.source.file "files" {
-  targets    = local.file_match.sync-errors.targets
-  forward_to = [loki.write.mirror.receiver]
-}
-
 // This component is responsible for writing the logs to Loki
 loki.write "mirror" {
 	endpoint {
