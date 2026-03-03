@@ -199,11 +199,11 @@ auto JobManager::reap_processes() -> std::vector<::pid_t>
             else if (isKnownJob && exitStatus != EXIT_SUCCESS)
             {
                 const auto logFileName
-                    = this->write_stderr_to_file(childProcessID);
+                    = this->write_fail_to_file(childProcessID);
 
                 spdlog::warn(
-                    "Project {} failed to sync! The contents of STDERR for the "
-                    "process have been written to {}! Exit code: {} (pid: {})",
+                    "Project {} failed to sync! Output of from the "
+                    "process has been written to {}! Exit code: {} (pid: {})",
                     m_ActiveJobs.at(childProcessID).jobName,
                     logFileName,
                     exitStatus,
@@ -232,36 +232,40 @@ auto JobManager::reap_processes() -> std::vector<::pid_t>
     return completedJobs;
 }
 
-auto JobManager::write_stderr_to_file(const ::pid_t processID) -> std::string
+auto JobManager::write_fail_to_file(const ::pid_t processID) -> std::string
 {
-    static std::random_device            randomDevice;
-    static std::mt19937                  randomGenerator(randomDevice());
-    static std::uniform_int_distribution distribution(1, 10000);
+    const auto startTime            = m_ActiveJobs.at(processID).startTime;
+    const std::time_t tStartTime    = std::chrono::system_clock::to_time_t(startTime);
+    const auto tmStartTime          = std::localtime(&tStartTime);
 
-    const auto logNumber    = distribution(randomGenerator);
+    char timestamp[14];
+    std::strftime(timestamp,sizeof(timestamp),"%Y%j%H%M%S",tmStartTime);
+
     const auto errorLogPath = std::filesystem::relative("error-logs");
 
+    // only one process can run for a given jobName at a time so we know
+    // logFileName will be unique
     auto logFileName = std::format(
-        "{}-{}-stderr.log",
+        "{}-{}.log",
         m_ActiveJobs.at(processID).jobName,
-        logNumber
+        timestamp
     );
 
     std::ofstream logFile(errorLogPath / logFileName);
 
     int bytesAvailable = 0;
-    ::ioctl(m_ActiveJobs.at(processID).stderrPipe, FIONREAD, &bytesAvailable);
+    ::ioctl(m_ActiveJobs.at(processID).stdPipe, FIONREAD, &bytesAvailable);
 
-    std::string stderrContents;
-    stderrContents.resize(bytesAvailable + 1);
+    std::string pipeContents;
+    pipeContents.resize(bytesAvailable + 1);
 
     ::read(
-        m_ActiveJobs.at(processID).stderrPipe,
-        stderrContents.data(),
+        m_ActiveJobs.at(processID).stdPipe,
+        pipeContents.data(),
         bytesAvailable
     );
 
-    logFile << stderrContents;
+    logFile << pipeContents;
 
     return logFileName;
 }

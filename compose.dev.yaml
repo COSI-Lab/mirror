@@ -21,6 +21,7 @@ services:
       - "./config/sync/configs:/mirror/configs:ro"
       - "./config/sync/scripts:/mirror/scripts:ro"
       - "./config/sync/secrets:/mirror/secrets:ro"
+      - sync-errors:/mirror/error-logs
     networks:
       - mirror
     stdin_open: true
@@ -66,6 +67,7 @@ services:
     volumes:
       - ./config/config.alloy:/etc/alloy/config.alloy:ro
       - /var/run/docker.sock:/var/run/docker.sock
+      - sync-errors:/var/log/sync-errors
     command: run --storage.path=/var/lib/alloy/data /etc/alloy/config.alloy
     depends_on:
       - loki
@@ -101,3 +103,6 @@ services:
 networks:
   mirror:
   loki:
+
+volumes:
+  - sync-errors: {}
