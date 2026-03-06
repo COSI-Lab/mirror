@@ -806,7 +806,7 @@
       "name": "Wikimedia XML Dumps",
       "page": "Miscellaneous",
       "rsync": {
-        "host": "rsync-dumps.wikimedia.org",
+        "host": "dumps-rsync.wikimedia.org",
         "src": "dumpslasttwo",
         "dest": "/storage/wikimedia",
         "options": "-avzrHy -4 --no-perms --no-group --no-owner --delete --delete-delay --delay-updates --ignore-errors --exclude \".~tmp~\"",
