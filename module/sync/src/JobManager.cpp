@@ -152,31 +152,7 @@ auto JobManager::reap_processes() -> std::vector<::pid_t>
             completedJobs.emplace_back(childProcessID);
             break;
 
-        case 0: // Process still running
-            if (!isKnownJob)
-            {
-                break;
-            }
-
-            syncDuration = std::chrono::duration_cast<std::chrono::hours>(
-                std::chrono::system_clock::now()
-                - m_ActiveJobs.at(childProcessID).startTime
-            );
-            if (syncDuration < JOB_TIMEOUT)
-            {
-                break;
-            }
-
-            spdlog::warn(
-                "Project {} has been syncing for at least {} hour{}. "
-                "(pid: {})",
-                m_ActiveJobs.at(childProcessID).jobName,
-                JOB_TIMEOUT.count(),
-                // if not one hour, plural
-                (JOB_TIMEOUT.count() == 1 ? "" : "s"),
-                childProcessID
-            );
-            
+        case 0: // Process still running, do nothing
             break;
 
         default:
