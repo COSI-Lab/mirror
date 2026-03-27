@@ -42,6 +42,7 @@ async def get_loki_query(session, query, start, end):
     @param start Start of time range
     @param end End of time range
     """
+    return {'status': 'success', 'data': {'resultType': 'streams', 'result': [{'stream': {'ip': '128.153.144.199', 'project': 'alpine'}, 'values': [['1774647681003368759', 'GET /alpine/edge/community/aarch64/ HTTP/1.1 128.153.144.199']]}], 'stats': {'summary': {'bytesProcessedPerSecond': 67076, 'linesProcessedPerSecond': 234, 'totalBytesProcessed': 572, 'totalLinesProcessed': 2, 'execTime': 0.008528, 'queueTime': 0.000202, 'subqueries': 0, 'totalEntriesReturned': 1, 'splits': 0, 'shards': 1, 'totalPostFilterLines': 1, 'totalStructuredMetadataBytesProcessed': 16}, 'querier': {'store': {'totalChunksRef': 0, 'totalChunksDownloaded': 0, 'chunksDownloadTime': 0, 'queryReferencedStructuredMetadata': False, 'chunk': {'headChunkBytes': 0, 'headChunkLines': 0, 'decompressedBytes': 0, 'decompressedLines': 0, 'compressedBytes': 0, 'totalDuplicates': 0, 'postFilterLines': 0, 'headChunkStructuredMetadataBytes': 0, 'decompressedStructuredMetadataBytes': 0}, 'chunkRefsFetchTime': 0, 'congestionControlLatency': 0, 'pipelineWrapperFilteredLines': 0}}, 'ingester': {'totalReached': 1, 'totalChunksMatched': 1, 'totalBatches': 2, 'totalLinesSent': 1, 'store': {'totalChunksRef': 0, 'totalChunksDownloaded': 0, 'chunksDownloadTime': 0, 'queryReferencedStructuredMetadata': False, 'chunk': {'headChunkBytes': 572, 'headChunkLines': 2, 'decompressedBytes': 0, 'decompressedLines': 0, 'compressedBytes': 0, 'totalDuplicates': 0, 'postFilterLines': 1, 'headChunkStructuredMetadataBytes': 16, 'decompressedStructuredMetadataBytes': 0}, 'chunkRefsFetchTime': 239795, 'congestionControlLatency': 0, 'pipelineWrapperFilteredLines': 0}}, 'cache': {'chunk': {'entriesFound': 0, 'entriesRequested': 0, 'entriesStored': 0, 'bytesReceived': 0, 'bytesSent': 0, 'requests': 0, 'downloadTime': 0, 'queryLengthServed': 0}, 'index': {'entriesFound': 0, 'entriesRequested': 0, 'entriesStored': 0, 'bytesReceived': 0, 'bytesSent': 0, 'requests': 0, 'downloadTime': 0, 'queryLengthServed': 0}, 'result': {'entriesFound': 0, 'entriesRequested': 0, 'entriesStored': 0, 'bytesReceived': 0, 'bytesSent': 0, 'requests': 0, 'downloadTime': 0, 'queryLengthServed': 0}, 'statsResult': {'entriesFound': 0, 'entriesRequested': 0, 'entriesStored': 0, 'bytesReceived': 0, 'bytesSent': 0, 'requests': 0, 'downloadTime': 0, 'queryLengthServed': 0}, 'volumeResult': {'entriesFound': 0, 'entriesRequested': 0, 'entriesStored': 0, 'bytesReceived': 0, 'bytesSent': 0, 'requests': 0, 'downloadTime': 0, 'queryLengthServed': 0}, 'seriesResult': {'entriesFound': 0, 'entriesRequested': 0, 'entriesStored': 0, 'bytesReceived': 0, 'bytesSent': 0, 'requests': 0, 'downloadTime': 0, 'queryLengthServed': 0}, 'labelResult': {'entriesFound': 0, 'entriesRequested': 0, 'entriesStored': 0, 'bytesReceived': 0, 'bytesSent': 0, 'requests': 0, 'downloadTime': 0, 'queryLengthServed': 0}, 'instantMetricResult': {'entriesFound': 0, 'entriesRequested': 0, 'entriesStored': 0, 'bytesReceived': 0, 'bytesSent': 0, 'requests': 0, 'downloadTime': 0, 'queryLengthServed': 0}}, 'index': {'totalChunks': 0, 'postFilterChunks': 0, 'shardsDuration': 0, 'usedBloomFilters': False}}}}
     print(f"Querying Loki: {query} {start} to {end}")
     params = {
         "query": query,
@@ -83,13 +84,9 @@ async def data_thread_task():
                 print(responses[0])
                 print(responses[1])
                 if responses[0] is not None:
-                    result = responses[0]["data"]["result"]
-                    if result != []:
-                        data += [(entry["ip"], entry["module"]) for entry in result[0]["values"][0]]
+                    data += [(entry["stream"]["ip"], entry["stream"]["module"]) for entry in responses[0]["data"]["result"]]
                 if responses[1] is not None:
-                    result = responses[1]["data"]["result"]
-                    if result != []:
-                        data += [(entry["ip"], entry["project"]) for entry in result[0]["values"][0]]
+                    data += [(entry["stream"]["ip"], entry["stream"]["project"]) for entry in responses[1]["data"]["result"]]
                 last_updated = update_time
                 print("data processed")
 
