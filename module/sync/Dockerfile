@@ -2,7 +2,7 @@
 # Replace --uid 1000 and --gid 1000 with the uid and gid of the mirror user
 
 # Build
-FROM ubuntu:24.04 as builder
+FROM ubuntu:24.04 AS builder
 RUN apt update && apt install -y g++ cmake libzmq3-dev ninja-build git
 WORKDIR /mirror
 COPY src src

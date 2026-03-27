@@ -24,8 +24,6 @@ services:
       - /var/log/mirror:/mirror/error-logs
     networks:
       - mirror
-    stdin_open: true
-    tty: true
   # --- Web Proxy ---
   proxy:
     image: nginx:latest
@@ -39,8 +37,17 @@ services:
       - "./module/web/mirror_website/static:/var/www/static:ro"
     networks:
       - mirror
-    stdin_open: true
-    tty: true
+  # --- rsyncd Host ---
+  rsyncd:
+    build: ./module/rsyncd
+    container_name: rsyncd
+    expose:
+      - 873
+    restart: unless-stopped
+    volumes:
+      - "./config/sync/configs/mirrors.json:/mirrors.json:ro"
+    networks:
+      - mirror
   # --- Website ---
   web:
     build: ./module/web
@@ -55,8 +62,6 @@ services:
       - "./config/sync/configs:/configs:ro"
     networks:
       - mirror
-    stdin_open: true
-    tty: true
   # --- Monitoring stack (Loki + Grafana + Alloy) ---
   alloy:
     image: grafana/alloy:v1.7.5
