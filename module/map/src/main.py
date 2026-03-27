@@ -42,6 +42,7 @@ async def get_loki_query(session, query, start, end):
     @param start Start of time range
     @param end End of time range
     """
+    print(f"Querying Loki: {query} {start} to {end}")
     params = {
         "query": query,
         "start": str(start),
@@ -50,6 +51,7 @@ async def get_loki_query(session, query, start, end):
     try:
         async with session.get(QUERY_ENDPOINT, params=params) as response:
             response.raise_for_status()
+            print("query finished")
             data = await response.json()
             return data
     except aiohttp.ClientError as e:
@@ -67,19 +69,23 @@ async def data_thread_task():
         while True:
             try:
                 await asyncio.sleep(0.5)
+                print("Starting data fetch...")
 
                 update_time = time.time()
                 queries = [
                     get_loki_query(session, RSYNC_QUERY, last_updated, update_time),
                     get_loki_query(session, PROXY_QUERY, last_updated, update_time)
                 ]
+                print("awaiting queries")
                 responses = await asyncio.gather(*queries)
+                print("both queries complete")
                 data = []
                 if responses[0] is not None:
                     data += [(entry["ip"], entry["module"]) for entry in responses[0][0]["data"]["values"][0]]
                 if responses[1] is not None:
                     data += [(entry["ip"], entry["project"]) for entry in responses[1][0]["data"]["values"][0]]
                 last_updated = update_time
+                print("data processed")
 
                 for ip_addr, project in data:
                     lat, lon = lookup_ip(ip_addr)
@@ -88,6 +94,7 @@ async def data_thread_task():
                         continue
                     msg = "\n".join([project, str(lat), str(lon)])
                     await broadcast.publish(channel="data", message=msg)
+                print("data sent")
 
             except Exception as e:
                 print("data thread exception:")
