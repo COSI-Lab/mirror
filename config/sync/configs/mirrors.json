@@ -134,6 +134,7 @@
                 "dest": "/storage/artix-linux/repos",
                 "host": "mirror1.artixlinux.org",
                 "options": [
+                    "--mkpath",
                     "--recursive",
                     "--times",
                     "--links",
@@ -1388,6 +1389,7 @@
                 "dest": "/storage/zorinos/isos",
                 "host": "mirror.zorinos.com",
                 "options": [
+                    "--mkpath",
                     "--archive",
                     "--compress",
                     "--recursive",
