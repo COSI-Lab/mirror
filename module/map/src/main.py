@@ -1,4 +1,3 @@
-import random
 import time
 import asyncio
 from contextlib import asynccontextmanager
@@ -15,16 +14,16 @@ broadcast = Broadcast('memory://')
 
 LOKI_HOSTNAME = "loki:3100"
 QUERY_ENDPOINT = LOKI_HOSTNAME + "/loki/api/v1/query_range"
-PROXY_QUERY = "{container=\"proxy\"} | json | __error__=`` | line_format `{{.request}} {{.remote_addr}}` | regexp `^GET /(?P<project>[^ /]*).*?(?P<ip>[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3})` | keep project, ip"
-RSYNC_QUERY = "{container=\"rsyncd\"} |= `rsync on` | regexp `^.*? rsync on (?P<module>[^ /]*).*? from .* \((?P<ip>.*?)\)` | keep module,ip"
+PROXY_QUERY = "{container=\"proxy\"} | json | __error__=`` | line_format `{{.request}} {{.remote_addr}}` | regexp `^GET /(?P<project>[^ /]*).*?(?P<ip>[0-9]{1,3}\\.[0-9]{1,3}\\.[0-9]{1,3}\\.[0-9]{1,3})` | keep project, ip"
+RSYNC_QUERY = "{container=\"rsyncd\"} |= `rsync on` | regexp `^.*? rsync on (?P<module>[^ /]*).*? from .* \\((?P<ip>.*?)\\)` | keep module,ip"
 
 ip_database = geoip2.database.Reader('./GeoLite2-City_20260324/GeoLite2-City.mmdb')
-ip_cache = TTLCache(maxsize=-1, ttl=5*60)
+ip_cache = TTLCache(maxsize=10000, ttl=5*60)
 
 def lookup_ip(ip_addr):
     if ip_cache.get(ip_addr) is not None:
         return None, None
-    ip_cache.update(ip_addr)
+    ip_cache[ip_addr] = None
     
     try:
         match = ip_database.city(ip_addr)
@@ -46,10 +45,8 @@ async def get_loki_query(session, query, start, end):
             return data
     except aiohttp.ClientError as e:
         print(f"Error fetching data from {QUERY_ENDPOINT}: {e}")
-        return []
     except asyncio.TimeoutError:
         print(f"Request to {QUERY_ENDPOINT} timed out")
-        return []
 
 
 async def data_thread_task():
@@ -64,16 +61,20 @@ async def data_thread_task():
                     get_loki_query(session, RSYNC_QUERY, last_updated, update_time),
                     get_loki_query(session, PROXY_QUERY, last_updated, update_time)
                 ]
-                data = await asyncio.gather(*queries)
-                data = data[0] + data[1]
+                responses = await asyncio.gather(*queries)
+                data = []
+                if responses[0] is not None:
+                    data += [(entry["ip"], entry["module"]) for entry in responses[0][0]["data"]["values"][0]]
+                if responses[1] is not None:
+                    data += [(entry["ip"], entry["project"]) for entry in responses[1][0]["data"]["values"][0]]
                 last_updated = update_time
 
-                for ip_addr, proj in data:
+                for ip_addr, project in data:
                     lat, lon = lookup_ip(ip_addr)
                     if lat is None:
                         print(f"couldn't look up: {ip_addr}")
                         continue
-                    msg = "\n".join([proj, str(lat), str(lon)])
+                    msg = "\n".join([project, str(lat), str(lon)])
                     await broadcast.publish(channel="data", message=msg)
 
             except Exception as e:
