@@ -15,7 +15,7 @@ LOKI_HOSTNAME = "loki:3100"
 QUERY_ENDPOINT = "http://" + LOKI_HOSTNAME + "/loki/api/v1/query_range"
 PROXY_QUERY = "{container=\"proxy\"} | json | __error__=`` | line_format `{{.request}} {{.remote_addr}}` | regexp `^GET /(?P<project>[^ /]*).*?(?P<ip>[0-9]{1,3}\\.[0-9]{1,3}\\.[0-9]{1,3}\\.[0-9]{1,3})` | keep project, ip"
 RSYNC_QUERY = "{container=\"rsyncd\"} |= `rsync on` | regexp `^.*? rsync on (?P<module>[^ /]*).*? from .* \\((?P<ip>.*?)\\)` | keep module,ip"
-MIRROR_FILE = "./mirror.json"
+MIRROR_FILE = "./mirrors.json"
 
 ip_cache = TTLCache(maxsize=10000, ttl=5*60)
 ip_database = geoip2.database.Reader('./data/GeoLite2-City.mmdb')
