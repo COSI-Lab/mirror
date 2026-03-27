@@ -20,7 +20,8 @@ MIRROR_FILE = "./mirror.json"
 ip_cache = TTLCache(maxsize=10000, ttl=5*60)
 ip_database = geoip2.database.Reader('./data/GeoLite2-City.mmdb')
 
-mirror_projects = list(map(str.lower, json.load(MIRROR_FILE)['mirrors'].keys()))
+with open(MIRROR_FILE, 'r') as file:
+    mirror_projects = list(map(str.lower, json.load(file)['mirrors'].keys()))
 
 
 def lookup_ip(ip_addr: str):
