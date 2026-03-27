@@ -1,4 +1,5 @@
 import time
+import json
 import asyncio
 from contextlib import asynccontextmanager
 import traceback
@@ -14,20 +15,19 @@ LOKI_HOSTNAME = "loki:3100"
 QUERY_ENDPOINT = "http://" + LOKI_HOSTNAME + "/loki/api/v1/query_range"
 PROXY_QUERY = "{container=\"proxy\"} | json | __error__=`` | line_format `{{.request}} {{.remote_addr}}` | regexp `^GET /(?P<project>[^ /]*).*?(?P<ip>[0-9]{1,3}\\.[0-9]{1,3}\\.[0-9]{1,3}\\.[0-9]{1,3})` | keep project, ip"
 RSYNC_QUERY = "{container=\"rsyncd\"} |= `rsync on` | regexp `^.*? rsync on (?P<module>[^ /]*).*? from .* \\((?P<ip>.*?)\\)` | keep module,ip"
+MIRROR_FILE = "./mirror.json"
 
 ip_cache = TTLCache(maxsize=10000, ttl=5*60)
 ip_database = geoip2.database.Reader('./data/GeoLite2-City.mmdb')
 
-def lookup_ip(ip_addr: str, project: str):
+mirror_projects = list(map(str.lower, json.load(MIRROR_FILE)['mirrors'].keys()))
+
+
+def lookup_ip(ip_addr: str):
     """
     Lookup an IP address in the maxmind database
     @param ip_addr The IP address to look up
     """
-    cache_key = ip_addr + "-" + project
-    if ip_cache.get(cache_key) is not None:
-        return None, None
-    ip_cache[cache_key] = -1
-    
     try:
         match = ip_database.city(ip_addr)
         return match.location.latitude, match.location.longitude
@@ -43,7 +43,6 @@ async def get_loki_query(session, query, start, end):
     @param start Start of time range
     @param end End of time range
     """
-    print(f"Querying Loki: {query} {start} to {end}")
     params = {
         "query": query,
         "start": str(start),
@@ -52,7 +51,6 @@ async def get_loki_query(session, query, start, end):
     try:
         async with session.get(QUERY_ENDPOINT, params=params) as response:
             response.raise_for_status()
-            print("query finished")
             data = await response.json()
             return data
     except aiohttp.ClientError as e:
@@ -69,35 +67,37 @@ async def data_thread_task():
         last_updated = time.time()
         while True:
             try:
-                await asyncio.sleep(5)
-                print("Starting data fetch...")
+                await asyncio.sleep(3)
 
                 update_time = time.time()
                 queries = [
                     get_loki_query(session, RSYNC_QUERY, last_updated, update_time),
                     get_loki_query(session, PROXY_QUERY, last_updated, update_time)
                 ]
-                print("awaiting queries")
                 responses = await asyncio.gather(*queries)
-                print("both queries complete")
                 data = []
-                print(responses[0])
-                print(responses[1])
+
                 if responses[0] is not None:
                     data += [(entry["stream"]["ip"], entry["stream"]["module"]) for entry in responses[0]["data"]["result"]]
                 if responses[1] is not None:
                     data += [(entry["stream"]["ip"], entry["stream"]["project"]) for entry in responses[1]["data"]["result"]]
                 last_updated = update_time
-                print("data processed")
 
                 for ip_addr, project in data:
-                    lat, lon = lookup_ip(ip_addr, project)
+                    if project.lower() not in mirror_projects:
+                        continue
+
+                    cache_key = ip_addr + "-" + project
+                    if ip_cache.get(cache_key) is not None:
+                        continue
+                    ip_cache[cache_key] = -1
+
+                    lat, lon = lookup_ip(ip_addr)
                     if lat is None:
                         print(f"couldn't look up: {ip_addr}")
                         continue
                     msg = "\n".join([project, str(lat), str(lon)])
                     await broadcast.publish(channel="data", message=msg)
-                print("data sent")
 
             except Exception as e:
                 print("data thread exception:")
