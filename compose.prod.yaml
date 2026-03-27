@@ -41,11 +41,12 @@ services:
   rsyncd:
     build: ./module/rsyncd
     container_name: rsyncd
-    expose:
-      - 873
+    ports:
+      - "873:873"
     restart: unless-stopped
     volumes:
       - "./config/sync/configs/mirrors.json:/mirrors.json:ro"
+      - "/storage:/storage"
     networks:
       - mirror
   # --- Website ---

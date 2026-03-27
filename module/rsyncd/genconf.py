@@ -17,7 +17,8 @@ body = """[{}]
     path = {}
     exclude = lost+found/
     read only = true
-    ignore nonreadable = yes"""
+    ignore nonreadable = yes
+"""
 
 import json
 
