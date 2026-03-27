@@ -19,6 +19,7 @@
 #include <cerrno>
 #include <chrono>
 #include <csignal>
+#include <cstddef>
 #include <cstdio>
 #include <cstdlib>
 #include <cstring>
@@ -31,6 +32,7 @@
 #include <stop_token>
 #include <string>
 #include <thread>
+#include <utility>
 #include <vector>
 
 // Third Party Includes
@@ -72,20 +74,26 @@ auto JobManager::process_reaper(const std::stop_token& stopToken) -> void
             return;
         }
 
-        auto completedJobs = reap_processes();
+        auto completedJobs = this->reap_processes();
 
         this->deregister_jobs(completedJobs);
         completedJobs.clear();
     }
 }
 
-auto JobManager::get_child_process_ids(const ::pid_t processID = ::getpid())
+auto JobManager::get_child_process_ids(const ::pid_t processID)
     -> std::vector<::pid_t>
 {
-    static const std::filesystem::path taskDirectory
+    const std::filesystem::path taskDirectory
         = std::filesystem::absolute(std::format("/proc/{}/task/", processID));
 
     std::vector<::pid_t> childProcesses = {};
+
+    spdlog::trace(
+        "Gathering child process ids for process with pid {}",
+        processID
+    );
+
     for (const auto& taskEntry :
          std::filesystem::directory_iterator(taskDirectory))
     {
@@ -120,8 +128,6 @@ auto JobManager::reap_processes() -> std::vector<::pid_t>
 {
     std::string errorMessage(BUFSIZ, '\0');
 
-    static const ::pid_t syncSchedulerProcessID = ::getpid();
-
     std::vector<::pid_t> completedJobs;
     completedJobs.reserve(m_ActiveJobs.size());
 
@@ -135,7 +141,6 @@ auto JobManager::reap_processes() -> std::vector<::pid_t>
 
         int                status      = 0;
         const bool         isKnownJob  = m_ActiveJobs.contains(childProcessID);
-        constexpr auto     JOB_TIMEOUT = std::chrono::hours(6);
         std::chrono::hours syncDuration;
 
         // NOLINTNEXTLINE(misc-include-cleaner)
@@ -162,9 +167,8 @@ auto JobManager::reap_processes() -> std::vector<::pid_t>
             if (isKnownJob && exitStatus == EXIT_SUCCESS)
             {
                 spdlog::info(
-                    "Project {} successfully synced! (pid: {})",
-                    m_ActiveJobs.at(childProcessID).jobName,
-                    childProcessID
+                    "Project {} successfully synced!",
+                    m_ActiveJobs.at(childProcessID).jobName
                 );
                 completedJobs.emplace_back(childProcessID);
             }
@@ -185,14 +189,16 @@ auto JobManager::reap_processes() -> std::vector<::pid_t>
             else if (!isKnownJob && exitStatus == EXIT_SUCCESS)
             {
                 spdlog::info(
-                    "Reaped successful unregistered child process with pid {}",
+                    "Reaped successful unregistered child process with pid "
+                    "{}",
                     childProcessID
                 );
             }
             else
             {
                 spdlog::warn(
-                    "Reaped unsuccessful unregistered child process with pid "
+                    "Reaped unsuccessful unregistered child process with "
+                    "pid "
                     "{}",
                     childProcessID
                 );
@@ -244,13 +250,17 @@ auto JobManager::write_fail_to_file(const ::pid_t processID) -> std::string
 // NOLINTNEXTLINE(*-no-recursion)
 auto JobManager::interrupt_job(const ::pid_t processID) -> void
 {
-    // Interrupt child processes recursively. Starts with the grandest child and
-    // works its way back up to the direct decendant of the sync scheduler
+    // Interrupt child processes recursively. Starts with the grandest child
+    // and works its way back up to the direct descendant of the sync
+    // scheduler
     //
-    // Base case: process with no children. `get_child_process_ids` will be an
-    // empty collection meaning nothing to iterate over
-    for (const ::pid_t childProcessID : JobManager::get_child_process_ids())
+    // Base case: process with no children. `get_child_process_ids` will be
+    // an empty collection meaning nothing to iterate over
+
+    for (const ::pid_t childProcessID :
+         JobManager::get_child_process_ids(processID))
     {
+        spdlog::trace("Interrupting job with pid {}", childProcessID);
         JobManager::interrupt_job(childProcessID);
     }
 
@@ -273,29 +283,31 @@ auto JobManager::interrupt_job(const ::pid_t processID) -> void
 
     spdlog::debug("Successfully sent process {} a SIGTERM", processID);
 
-    constexpr auto SIGTERM_TIMEOUT = std::chrono::seconds(30);
-    const auto     start           = std::chrono::system_clock::now();
-    auto           now             = start;
+    // TODO: Handle asynchronously instead of commenting out. Also find some way
+    // to account for process possibly being reaped by its parent
+    /*     constexpr auto SIGTERM_TIMEOUT = std::chrono::seconds(30);
+        const auto     start           = std::chrono::system_clock::now();
+        auto           now             = start;
 
-    while ((now - start) < SIGTERM_TIMEOUT)
-    {
-        const int waitReturn = ::waitpid(processID, nullptr, WNOHANG);
-
-        if (waitReturn == processID)
+        while ((now - start) < SIGTERM_TIMEOUT)
         {
-            spdlog::trace("Process {} successfully reaped", processID);
-            return;
+            const int waitReturn = ::waitpid(processID, nullptr, WNOHANG);
+
+            if (waitReturn == processID)
+            {
+                spdlog::trace("Process {} successfully reaped", processID);
+                return;
+            }
+
+            constexpr auto CHECK_INTERVAL = std::chrono::milliseconds(100);
+            std::this_thread::sleep_for(CHECK_INTERVAL);
+
+            now = std::chrono::system_clock::now();
         }
 
-        constexpr auto CHECK_INTERVAL = std::chrono::milliseconds(100);
-        std::this_thread::sleep_for(CHECK_INTERVAL);
+        spdlog::error("Failed to terminate process {} with SIGTERM", processID);
 
-        now = std::chrono::system_clock::now();
-    }
-
-    spdlog::error("Failed to terminate process {} with SIGTERM", processID);
-
-    JobManager::kill_job(processID);
+        JobManager::kill_job(processID); */
 }
 
 auto JobManager::job_is_running(const std::string& jobName) -> bool
@@ -329,6 +341,8 @@ auto JobManager::kill_job(const ::pid_t processID) -> void
             // NOLINTNEXTLINE(*-include-cleaner)
             ::strerror_r(errno, errorMessage.data(), errorMessage.size())
         );
+
+        return;
     }
 
     const int waitReturn = ::waitpid(processID, nullptr, 0);
@@ -399,7 +413,7 @@ auto JobManager::deregister_jobs(const std::vector<::pid_t>& completedJobs)
 // NOLINTBEGIN(*-easily-swappable-parameters)
 auto JobManager::start_job(
     const std::string&           jobName,
-    std::string                  command,
+    std::vector<std::string>     command,
     const std::filesystem::path& passwordFile
 ) -> bool
 // NOLINTEND(*-easily-swappable-parameters)
@@ -463,20 +477,21 @@ auto JobManager::start_job(
             );
         }
 
-        //! ::strdup allocates memory with ::malloc. Typically this memory
-        //! should be ::free'd. However, argv is supposed to have the same
-        //! lifetime as the process it belongs to, therefore the memory should
-        //! never be freed and we do not need to maintain a copy of the pointer
-        //! to free it at a later time
-        // NOLINTBEGIN(*-include-cleaner)
-        const std::array<char*, 4> argv { ::strdup("/bin/sh"),
-                                          ::strdup("-c"),
-                                          ::strdup(command.data()),
-                                          nullptr };
-        // NOLINTEND(*-include-cleaner)
+        std::vector<char*> argv;
+        argv.resize(command.size() + 1);
+
+        std::transform(
+            std::begin(command),
+            std::end(command),
+            std::begin(argv),
+            [](std::string& str) { return std::data(str); }
+        );
+
+        // Last item in argv has to be a nullptr;
+        argv.emplace_back(nullptr);
 
         spdlog::debug("Setting process group ID");
-        ::setpgid(0, 0);
+        //::setpgid(0, 0);
 
         // not quite yet :)
         spdlog::trace("Calling exec");
@@ -505,7 +520,8 @@ auto JobManager::start_job(
         ::close(stdPipes.at(1));
 
         spdlog::error(
-            "Call to execv() failed while trying to sync {}! Error message: {}",
+            "Call to execv() failed while trying to sync {}! Error "
+            "message: {}",
             jobName,
             // NOLINTNEXTLINE(*-include-cleaner)
             ::strerror_r(errno, errorMessage.data(), errorMessage.size())

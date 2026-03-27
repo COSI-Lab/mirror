@@ -569,15 +569,13 @@
       "torrents": "/storage/parrot/iso/*/"
     },
     "raspbian": {
-      "name": "Raspbian",
-      "page": "Distributions",
-      "script": {
-        "env": {
-          "mirror": "mirror.umd.edu"
+        "name": "Raspbian",
+        "page": "Distributions",
+        "script": {
+          "command": "python3",
+          "arguments": ["raspbmirror.py", "--tmpdir", "/storage/raspbian-tmp/", "--sourcepool", "/storage/debian/pool", "http://mirror.umd.edu/raspbian", "http://mirror.umd.edu/raspbian", "http://snapshot.raspbian.org/hashpool"],
+          "syncs_per_day": 3
         },
-        "command": "python3 raspbmirror.py --tmpdir /storage/raspbian-tmp/ --sourcepool /storage/debian/pool http://${mirror}/raspbian http://${mirror}/raspbian http://snapshot.raspbian.org/hashpool",
-        "syncs_per_day": 3
-      },
       "official": false,
       "homepage": "https://www.raspbian.org/",
       "color": "#c51d4a",
