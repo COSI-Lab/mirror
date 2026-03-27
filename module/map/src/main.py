@@ -14,6 +14,9 @@ from cachetools import TTLCache
 broadcast = Broadcast('memory://')
 
 LOKI_HOSTNAME = "localhost:1234"
+QUERY_ENDPOINT = LOKI_HOSTNAME + "/loki/api/v1/query_range"
+PROXY_QUERY = "{container=\"proxy\"} | json | __error__=`` | line_format `{{.request}} {{.remote_addr}}` | regexp `^GET /(?P<project>[^ /]*).*?(?P<ip>[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3})` | keep project, ip"
+RSYNC_QUERY = "{container=\"rsyncd\"} |= `rsync on` | regexp `^.*? rsync on (?P<module>[^ /]*).*? from .* \((?P<ip>.*?)\)` | keep module,ip"
 
 ip_database = geoip2.database.Reader('./GeoLite2-City_20260324/GeoLite2-City.mmdb')
 ip_cache = TTLCache(maxsize=-1, ttl=5*60)
@@ -29,23 +32,22 @@ def lookup_ip(ip_addr):
         return None, None
 
 
-async def loki_lookup(session, start, end):
-    url = LOKI_HOSTNAME + "/loki/api/v1/query_range"
+async def get_loki_query(session, query, start, end):
     params = {
-        "query": "",
+        "query": query,
         "start": str(start),
         "end": str(end)
     }
     try:
-        async with session.get(url, params=params) as response:
+        async with session.get(QUERY_ENDPOINT, params=params) as response:
             response.raise_for_status()
             data = await response.json()
             return data
     except aiohttp.ClientError as e:
-        print(f"Error fetching data from {url}: {e}")
+        print(f"Error fetching data from {QUERY_ENDPOINT}: {e}")
         return []
     except asyncio.TimeoutError:
-        print(f"Request to {url} timed out")
+        print(f"Request to {QUERY_ENDPOINT} timed out")
         return []
 
 
@@ -57,7 +59,12 @@ async def data_thread_task():
                 await asyncio.sleep(0.5)
 
                 update_time = time.time()
-                data = await loki_lookup(session, last_updated, update_time)
+                queries = [
+                    get_loki_query(session, RSYNC_QUERY, last_updated, update_time),
+                    get_loki_query(session, PROXY_QUERY, last_updated, update_time)
+                ]
+                data = await asyncio.gather(*queries)
+                data = data[0] + data[1]
                 last_updated = update_time
 
                 for ip_addr, proj in data:
