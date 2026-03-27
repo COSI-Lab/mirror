@@ -10,7 +10,7 @@ from cachetools import TTLCache
 
 broadcast = Broadcast('memory://')
 
-LOKI_HOSTNAME = "loki:3100"
+LOKI_HOSTNAME = "128.153.144.126:3100"
 QUERY_ENDPOINT = "http://" + LOKI_HOSTNAME + "/loki/api/v1/query_range"
 PROXY_QUERY = "{container=\"proxy\"} | json | __error__=`` | line_format `{{.request}} {{.remote_addr}}` | regexp `^GET /(?P<project>[^ /]*).*?(?P<ip>[0-9]{1,3}\\.[0-9]{1,3}\\.[0-9]{1,3}\\.[0-9]{1,3})` | keep project, ip"
 RSYNC_QUERY = "{container=\"rsyncd\"} |= `rsync on` | regexp `^.*? rsync on (?P<module>[^ /]*).*? from .* \\((?P<ip>.*?)\\)` | keep module,ip"
@@ -68,7 +68,7 @@ async def data_thread_task():
         last_updated = time.time()
         while True:
             try:
-                await asyncio.sleep(0.5)
+                await asyncio.sleep(5)
                 print("Starting data fetch...")
 
                 update_time = time.time()
