@@ -2,14 +2,12 @@ import time
 import asyncio
 from contextlib import asynccontextmanager
 import traceback
-
 import aiohttp
 from broadcaster import Broadcast
 from fastapi import FastAPI, WebSocket
 import geoip2.database
 from cachetools import TTLCache
 
-#broadcast = Broadcast("redis://localhost:6379")
 broadcast = Broadcast('memory://')
 
 LOKI_HOSTNAME = "loki:3100"
@@ -17,10 +15,14 @@ QUERY_ENDPOINT = LOKI_HOSTNAME + "/loki/api/v1/query_range"
 PROXY_QUERY = "{container=\"proxy\"} | json | __error__=`` | line_format `{{.request}} {{.remote_addr}}` | regexp `^GET /(?P<project>[^ /]*).*?(?P<ip>[0-9]{1,3}\\.[0-9]{1,3}\\.[0-9]{1,3}\\.[0-9]{1,3})` | keep project, ip"
 RSYNC_QUERY = "{container=\"rsyncd\"} |= `rsync on` | regexp `^.*? rsync on (?P<module>[^ /]*).*? from .* \\((?P<ip>.*?)\\)` | keep module,ip"
 
-ip_database = geoip2.database.Reader('./GeoLite2-City_20260324/GeoLite2-City.mmdb')
 ip_cache = TTLCache(maxsize=10000, ttl=5*60)
+ip_database = geoip2.database.Reader('./data/GeoLite2-City.mmdb')
 
-def lookup_ip(ip_addr):
+def lookup_ip(ip_addr: str):
+    """
+    Lookup an IP address in the maxmind database
+    @param ip_addr The IP address to look up
+    """
     if ip_cache.get(ip_addr) is not None:
         return None, None
     ip_cache[ip_addr] = None
@@ -33,6 +35,13 @@ def lookup_ip(ip_addr):
 
 
 async def get_loki_query(session, query, start, end):
+    """
+    Make a LogQL query to loki
+    @param session 
+    @param query The LogQL query
+    @param start Start of time range
+    @param end End of time range
+    """
     params = {
         "query": query,
         "start": str(start),
@@ -50,6 +59,9 @@ async def get_loki_query(session, query, start, end):
 
 
 async def data_thread_task():
+    """
+    The thread spun up to handle a map session
+    """
     async with aiohttp.ClientSession() as session:
         last_updated = time.time()
         while True:
