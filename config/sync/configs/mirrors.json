@@ -589,7 +589,7 @@
             "publicRsync": true,
             "rsync": {
                 "dest": "/storage/gentoo-portage",
-                "host": "rsync31.us.gentoo.org",
+                "host": "rsync.us.gentoo.org",
                 "options": [
                     "--recursive",
                     "--hard-links",
