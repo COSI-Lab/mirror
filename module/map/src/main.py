@@ -80,12 +80,16 @@ async def data_thread_task():
                 responses = await asyncio.gather(*queries)
                 print("both queries complete")
                 data = []
+                print(responses[0])
+                print(responses[1])
                 if responses[0] is not None:
-                    print(responses[0])
-                    data += [(entry["ip"], entry["module"]) for entry in responses[0]["data"]["values"][0]]
+                    result = responses[0]["data"]["result"]
+                    if result != []:
+                        data += [(entry["ip"], entry["module"]) for entry in result[0]["values"][0]]
                 if responses[1] is not None:
-                    print(responses[1])
-                    data += [(entry["ip"], entry["project"]) for entry in responses[1]["data"]["values"][0]]
+                    result = responses[1]["data"]["result"]
+                    if result != []:
+                        data += [(entry["ip"], entry["project"]) for entry in result[0]["values"][0]]
                 last_updated = update_time
                 print("data processed")
 
