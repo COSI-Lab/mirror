@@ -71,7 +71,7 @@ services:
       - 8080
     restart: unless-stopped
     volumes:
-      - "config/sync/configs/mirrors.json:/home/mirror-map/map/mirrors.json"
+      - "./config/sync/configs/mirrors.json:/home/mirror-map/map/mirrors.json:ro"
     networks:
       - mirror
       - loki
