@@ -18,14 +18,15 @@ RSYNC_QUERY = "{container=\"rsyncd\"} |= `rsync on` | regexp `^.*? rsync on (?P<
 ip_cache = TTLCache(maxsize=10000, ttl=5*60)
 ip_database = geoip2.database.Reader('./data/GeoLite2-City.mmdb')
 
-def lookup_ip(ip_addr: str):
+def lookup_ip(ip_addr: str, project: str):
     """
     Lookup an IP address in the maxmind database
     @param ip_addr The IP address to look up
     """
-    if ip_cache.get(ip_addr) is not None:
+    cache_key = ip_addr + "-" + project
+    if ip_cache.get(cache_key) is not None:
         return None, None
-    ip_cache[ip_addr] = None
+    ip_cache[cache_key] = -1
     
     try:
         match = ip_database.city(ip_addr)
@@ -90,7 +91,7 @@ async def data_thread_task():
                 print("data processed")
 
                 for ip_addr, project in data:
-                    lat, lon = lookup_ip(ip_addr)
+                    lat, lon = lookup_ip(ip_addr, project)
                     if lat is None:
                         print(f"couldn't look up: {ip_addr}")
                         continue
