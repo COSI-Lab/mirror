@@ -81,9 +81,11 @@ async def data_thread_task():
                 print("both queries complete")
                 data = []
                 if responses[0] is not None:
-                    data += [(entry["ip"], entry["module"]) for entry in responses[0][0]["data"]["values"][0]]
+                    print(responses[0])
+                    data += [(entry["ip"], entry["module"]) for entry in responses[0]["data"]["values"][0]]
                 if responses[1] is not None:
-                    data += [(entry["ip"], entry["project"]) for entry in responses[1][0]["data"]["values"][0]]
+                    print(responses[1])
+                    data += [(entry["ip"], entry["project"]) for entry in responses[1]["data"]["values"][0]]
                 last_updated = update_time
                 print("data processed")
 
