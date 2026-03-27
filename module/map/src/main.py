@@ -24,6 +24,7 @@ ip_cache = TTLCache(maxsize=-1, ttl=5*60)
 def lookup_ip(ip_addr):
     if ip_cache.get(ip_addr) is not None:
         return None, None
+    ip_cache.update(ip_addr)
     
     try:
         match = ip_database.city(ip_addr)
