@@ -89,7 +89,7 @@ services:
     networks:
       - loki
   grafana:
-    image: grafana/grafana:11.6.0
+    image: grafana/grafana:12.4.2
     container_name: grafana
     # TODO: Enable auth
     environment:
@@ -97,6 +97,7 @@ services:
       - GF_AUTH_ANONYMOUS_ORG_ROLE=Admin
       - GF_AUTH_ANONYMOUS_ENABLED=true
       - GF_AUTH_BASIC_ENABLED=false
+      - GF_INSTALL_PLUGINS=grafana-lokiexplore-app 1.0.39
     ports:
       - 127.0.0.1:3000:3000/tcp
     volumes:
