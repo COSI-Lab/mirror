@@ -35,6 +35,11 @@ services:
       - "./config/nginx.conf:/etc/nginx/conf.d/default.conf:ro"
       - "${MIRROR_STORAGE}:/storage:ro"
       - "./module/web/mirror_website/static:/var/www/static:ro"
+      - "/var/www/.well_known/acme_challenge:/var/www/.well_known/acme_challenge:ro"
+      - "/etc/letsencrypt:/etc/letsencrypt:ro"
+    environment:
+      - USE_SSL=${PROXY_USE_SSL:-true}
+      - DNS_BASENAME=${MIRROR_DNS_BASENAME}
     networks:
       - mirror
   # --- rsyncd Host ---
