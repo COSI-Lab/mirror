@@ -8,6 +8,7 @@ import aiohttp
 from broadcaster import Broadcast
 from fastapi import FastAPI, WebSocket
 import geoip2.database
+from cachetools import TTLCache
 
 #broadcast = Broadcast("redis://localhost:6379")
 broadcast = Broadcast('memory://')
@@ -15,22 +16,12 @@ broadcast = Broadcast('memory://')
 LOKI_HOSTNAME = "localhost:1234"
 
 ip_database = geoip2.database.Reader('./GeoLite2-City_20260324/GeoLite2-City.mmdb')
-
-projects = [
-    "Blender",
-    "Mint",
-    "Arch",
-    "Debian",
-    "Ubuntu",
-    "Alpine"
-]
-
-def random_data():
-    random_ip = ".".join([str(random.randrange(0, 256)) for i in range(4)])
-    random_proj = random.choice(projects)
-    return random_ip, random_proj
+ip_cache = TTLCache(maxsize=-1, ttl=5*60)
 
 def lookup_ip(ip_addr):
+    if ip_cache.get(ip_addr) is not None:
+        return None, None
+    
     try:
         match = ip_database.city(ip_addr)
         return match.location.latitude, match.location.longitude
@@ -39,8 +30,6 @@ def lookup_ip(ip_addr):
 
 
 async def loki_lookup(session, start, end):
-    return [random_data() for i in range(10)]
-
     url = LOKI_HOSTNAME + "/loki/api/v1/query_range"
     params = {
         "query": "",

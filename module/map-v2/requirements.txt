@@ -28,3 +28,4 @@ urllib3==2.6.3
 uvicorn==0.42.0
 websockets==16.0
 yarl==1.23.0
+cachetools==7.0.5
