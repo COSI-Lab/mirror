@@ -24,11 +24,12 @@ broadcast = Broadcast('memory://')
 
 # setup logger to mimic style of other components
 logging.basicConfig(
-    format='[%(asctime)s] [%(levelname)s] %(message)s', 
+    format='[%(asctime)s] [MAP] [%(levelname)s] %(message)s', 
     datefmt='%m/%d/%Y %I:%M:%S %p',
     level=os.environ.get('LOGLEVEL', 'INFO').upper()
 )
 logging.debug("Logger Initialized")
+logging.
 
 # get project names from mirrors.json
 try:
@@ -169,4 +170,4 @@ async def websocket_endpoint(websocket: WebSocket):
 if __name__ == "__main__":
     import uvicorn
     logging.debug("About to start uvicorn")
-    uvicorn.run(app, host="0.0.0.0", port=8080, workers=1, lifespan="on")
+    uvicorn.run(app, host="0.0.0.0", port=8080, workers=1, lifespan="on",log_config=None)

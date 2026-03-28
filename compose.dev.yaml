@@ -67,6 +67,8 @@ services:
     expose:
       - 8080
     restart: unless-stopped
+    environment:
+      - LOGLEVEL=${MAP_LOG_LEVEL}
     volumes:
       - "./config/sync/configs/mirrors.json:/map/mirrors.json:ro"
     networks:
