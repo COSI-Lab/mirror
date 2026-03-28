@@ -29,7 +29,6 @@ logging.basicConfig(
     level=os.environ.get('LOGLEVEL', 'INFO').upper()
 )
 logging.debug("Logger Initialized")
-logging.
 
 # get project names from mirrors.json
 try:
