@@ -32,7 +32,7 @@ services:
       - "80:80"
     restart: unless-stopped
     volumes:
-      - "./config/nginx-dev.conf:/etc/nginx/templates/default.template:ro"
+      - "./config/nginx-dev.conf:/etc/nginx/templates/default.conf.template:ro"
       - "${MIRROR_STORAGE}:/storage:ro"
       - "./module/web/mirror_website/static:/var/www/static:ro"
       - "/var/www/.well_known/acme_challenge:/var/www/.well_known/acme_challenge:ro"
