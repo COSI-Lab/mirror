@@ -24,7 +24,7 @@ broadcast = Broadcast('memory://')
 
 # setup logger to mimic style of other components
 logging.basicConfig(
-    format='[%(asctime)s] [MAP] [%(levelname)s] %(message)s', 
+    format='[%(asctime)s] [%(levelname)s] %(message)s', 
     datefmt='%m/%d/%Y %I:%M:%S %p',
     level=os.environ.get('LOGLEVEL', 'INFO').upper()
 )
