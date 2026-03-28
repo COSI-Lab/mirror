@@ -68,6 +68,18 @@ services:
       - "./config/sync/configs:/configs:ro"
     networks:
       - mirror
+  # --- Map ---
+  map:
+    build: ./module/map
+    container_name: map
+    expose:
+      - 8080
+    restart: unless-stopped
+    volumes:
+      - "./config/sync/configs/mirrors.json:/map/mirrors.json:ro"
+    networks:
+      - mirror
+      - loki
   # --- Monitoring stack (Loki + Grafana + Alloy) ---
   alloy:
     image: grafana/alloy:v1.7.5

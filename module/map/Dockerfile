@@ -1,15 +1,12 @@
-# Build
-FROM eclipse-temurin:21 as builder
-RUN apt update && apt install -y maven
-WORKDIR /mirror
-COPY ./pom.xml /mirror/pom.xml
-RUN mvn verify --fail-never
-COPY ./src /mirror/src
-RUN mvn package -DskipTests
-
-# Run
-FROM eclipse-temurin:21
+FROM python:3.14-alpine
 EXPOSE 8080
-WORKDIR /mirror
-COPY --from=builder /mirror/target/mirror-map-*-jar-with-dependencies.jar ./mirror-map.jar
-ENTRYPOINT [ "java", "-jar", "./mirror-map.jar" ]
+RUN addgroup -S mirror-map && adduser -S mirror-map -G mirror-map
+RUN mkdir /map
+RUN chown mirror-map:mirror-map /map
+WORKDIR /map
+COPY ./requirements.txt ./requirements.txt
+RUN python -m pip install -r requirements.txt
+COPY ./data ./data
+COPY ./src ./src
+USER mirror-map
+CMD ["python", "src/main.py"]
