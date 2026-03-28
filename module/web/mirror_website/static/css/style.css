@@ -215,6 +215,7 @@ main, header.page_header {
     padding: 1rem;
     margin-left: auto;
     margin-right: auto;
+    margin-bottom: 64px;
 }
 
 main>div.content {
@@ -233,7 +234,7 @@ main>div.content {
 
 body>footer {
     width: 100%;
-    margin: 64px 0 0 0;
+    margin: 0 0 0 0;
     padding: 64px 0;
     box-shadow: 0px -4px 8px rgba(0,0,0,0.5);
     background: var(--footer_bg);
