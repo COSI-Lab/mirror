@@ -4,9 +4,10 @@ prod:
 	docker compose -f compose.prod.yaml up --build -d --remove-orphans
 down:
 	docker compose -p mirror down
-test:
+rebuild:
 	make down && git pull && make prod && sleep 2 && docker ps
 certbot:
+	@echo This will bootstrap certbot on a fresh install
 	sudo apt-get remove certbot
 	sudo snap install --classic certbot
 	make down
