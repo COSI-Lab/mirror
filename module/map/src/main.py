@@ -2,68 +2,97 @@ import time
 import json
 import asyncio
 from contextlib import asynccontextmanager
-import traceback
 import aiohttp
 from broadcaster import Broadcast
-from fastapi import FastAPI, WebSocket
+from fastapi import FastAPI, WebSocket, WebSocketDisconnect
 import geoip2.database
 from cachetools import TTLCache
+import logging
+import os
 
-broadcast = Broadcast('memory://')
-
+# string constants
 LOKI_HOSTNAME = "loki:3100"
 QUERY_ENDPOINT = "http://" + LOKI_HOSTNAME + "/loki/api/v1/query_range"
-PROXY_QUERY = "{container=\"proxy\"} | json | __error__=`` | line_format `{{.request}} {{.remote_addr}}` | regexp `^GET /(?P<project>[^ /]*).*?(?P<ip>[0-9]{1,3}\\.[0-9]{1,3}\\.[0-9]{1,3}\\.[0-9]{1,3})` | keep project, ip"
-RSYNC_QUERY = "{container=\"rsyncd\"} |= `rsync on` | regexp `^.*? rsync on (?P<module>[^ /]*).*? from .* \\((?P<ip>.*?)\\)` | keep module,ip"
+PROXY_QUERY = r'{container="proxy"} | json | __error__=`` | line_format `{{.request}} {{.remote_addr}}` | regexp `^GET /(?P<project>[^ /]*).*?(?P<ip>[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3})` | keep project, ip'
+RSYNC_QUERY = r'{container="rsyncd"} |= `rsync on` | regexp `^.*? rsync on (?P<module>[^ /]*).*? from .* \((?P<ip>.*?)\)` | keep module,ip'
 MIRROR_FILE = "./mirrors.json"
 
+# globals
 ip_cache = TTLCache(maxsize=10000, ttl=5*60)
 ip_database = geoip2.database.Reader('./data/GeoLite2-City.mmdb')
+broadcast = Broadcast('memory://')
 
-with open(MIRROR_FILE, 'r') as file:
-    mirror_projects = list(map(str.lower, json.load(file)['mirrors'].keys()))
+# setup logger to mimic style of other components
+logging.basicConfig(
+    format='[%(asctime)s] [%(levelname)s] %(message)s', 
+    datefmt='%m/%d/%Y %I:%M:%S %p',
+    level=os.environ.get('LOGLEVEL', 'INFO').upper()
+)
+logging.debug("Logger Initialized")
 
+# get project names from mirrors.json
+try:
+    file = open(MIRROR_FILE, 'r')
+except OSError:
+    logging.critical("Unable to open mirrors.json. Exiting.")
+    exit(1)
+else:
+    try:
+        mirror_projects = list(map(str.lower, json.load(file)['mirrors'].keys()))
+    except KeyError:
+        logging.critical("Bad mirrors.json format. Exiting.")
+        exit(2)
+finally:
+    file.close()
+    logging.info("Loaded project list from mirrors.json")
 
-def lookup_ip(ip_addr: str):
+def lookup_ip(ip_addr: str) -> tuple[int,int]:
     """
     Lookup an IP address in the maxmind database
     @param ip_addr The IP address to look up
     """
+
     try:
         match = ip_database.city(ip_addr)
+        logging.info(f"Located {ip_addr} at {match.location.latitude},{match.location.longitude}")
         return match.location.latitude, match.location.longitude
     except geoip2.errors.AddressNotFoundError:
+        logging.warning(f"Unable to locate {ip_addr}")
         return None, None
 
-
-async def get_loki_query(session, query, start, end):
+async def get_loki_query(session: aiohttp.ClientSession, query: str, start: int, end: int) -> dict:
     """
     Make a LogQL query to loki
     @param session 
     @param query The LogQL query
-    @param start Start of time range
-    @param end End of time range
+    @param start Start of time range in seconds since the unix epoch
+    @param end End of time range in seconds since the unix epoch
     """
+
     params = {
         "query": query,
         "start": str(start),
         "end": str(end)
     }
+
     try:
         async with session.get(QUERY_ENDPOINT, params=params) as response:
             response.raise_for_status()
             data = await response.json()
+            logging.debug("Loki query successful")
             return data
     except aiohttp.ClientError as e:
-        print(f"Error fetching data from {QUERY_ENDPOINT}: {e}")
+        logging.error(f"Error fetching data from {QUERY_ENDPOINT}: {e}")
     except asyncio.TimeoutError:
-        print(f"Request to {QUERY_ENDPOINT} timed out")
+        logging.error(f"Request to {QUERY_ENDPOINT} timed out")
 
-
-async def data_thread_task():
+async def data_thread_task() -> None:
     """
     The thread spun up to handle a map session
     """
+
+    logging.info("Started query thread")
+    # open http session to query loki
     async with aiohttp.ClientSession() as session:
         last_updated = time.time()
         while True:
@@ -71,6 +100,7 @@ async def data_thread_task():
                 await asyncio.sleep(3)
 
                 update_time = time.time()
+                # send queries to loki and get raw response
                 queries = [
                     get_loki_query(session, RSYNC_QUERY, last_updated, update_time),
                     get_loki_query(session, PROXY_QUERY, last_updated, update_time)
@@ -78,6 +108,7 @@ async def data_thread_task():
                 responses = await asyncio.gather(*queries)
                 data = []
 
+                # extract relevant data from response body
                 if responses[0] is not None:
                     data += [(entry["stream"]["ip"], entry["stream"]["module"]) for entry in responses[0]["data"]["result"]]
                 if responses[1] is not None:
@@ -88,43 +119,54 @@ async def data_thread_task():
                     if project.lower() not in mirror_projects:
                         continue
 
+                    # if we've seen this person recently, skip them
                     cache_key = ip_addr + "-" + project
                     if ip_cache.get(cache_key) is not None:
                         continue
                     ip_cache[cache_key] = -1
 
+                    # do ip geolocation
                     lat, lon = lookup_ip(ip_addr)
                     if lat is None:
-                        print(f"couldn't look up: {ip_addr}")
                         continue
-                    msg = "\n".join([project, str(lat), str(lon)])
+                    msg = f"{project}\n{str(lat)}\n{str(lon)}"
+
+                    # send to message queue
                     await broadcast.publish(channel="data", message=msg)
 
-            except Exception as e:
-                print("data thread exception:")
-                print(e)
-                traceback.print_exc()
-
+            except Exception:
+                logging.exception(f"Data thread caught an exception")
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
+    """
+    Lifespan handler. Starts and cleans up after threads and the broadcast.
+    """
+
     await broadcast.connect()
-    task = asyncio.create_task(data_thread_task())
+    data_task = asyncio.create_task(data_thread_task())
     yield
-    task.cancel()
+    data_task.cancel()
     await broadcast.disconnect()
     
 app = FastAPI(lifespan=lifespan)
 
-
 @app.websocket("/ws")
 async def websocket_endpoint(websocket: WebSocket):
-    await websocket.accept()
+    """
+    WebSocket connection handler
+    """
 
-    async with broadcast.subscribe(channel="data") as subscriber:
-        async for event in subscriber:
-            await websocket.send_text(event.message)
+    await websocket.accept()
+    logging.debug(f"Connected to map client at {websocket.client.host}")
+    try:
+        async with broadcast.subscribe(channel="data") as subscriber:
+            async for event in subscriber:
+                await websocket.send_text(event.message)
+    except WebSocketDisconnect:
+        logging.debug(f"Map client {websocket.client.host} disconnected")
 
 if __name__ == "__main__":
     import uvicorn
-    uvicorn.run("main:app", host="0.0.0.0", port=8080, workers=1, lifespan="on")
+    logging.debug("About to start uvicorn")
+    uvicorn.run(app, host="0.0.0.0", port=8080, workers=1, lifespan="on")
