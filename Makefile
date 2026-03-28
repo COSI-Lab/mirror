@@ -5,7 +5,7 @@ prod:
 down:
 	docker compose -p mirror down
 test:
-        make down && git pull && make prod && sleep 2 && docker ps
+	make down && git pull && make prod && sleep 2 && docker ps
 certbot:
 	sudo apt-get remove certbot
 	sudo snap install --classic certbot
