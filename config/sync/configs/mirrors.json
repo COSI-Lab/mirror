@@ -829,7 +829,7 @@
             "publicRsync": true,
             "rsync": {
                 "dest": "/storage/manjaro",
-                "host": "manjaro.mirror.garr.it",
+                "host": "ftp.lyastor.liu.se",
                 "options": [
                     "--recursive",
                     "--hard-links",
