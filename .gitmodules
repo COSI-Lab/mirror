@@ -1,0 +1,9 @@
+[submodule "scripts/archvsync"]
+	path = scripts/archvsync
+	url = https://git.cosi.clarkson.edu/mirror/archvsync
+[submodule "scripts/quick-fedora-mirror"]
+	path = scripts/quick-fedora-mirror
+	url = https://git.cosi.clarkson.edu/mirror/quick-fedora-mirror
+[submodule "scripts/kicad"]
+	path = scripts/kicad
+	url = https://git.cosi.clarkson.edu/mirror/kicad
