@@ -10,23 +10,24 @@ Software for Clarkson University's open source mirror.
 
 # Building
 
-To build Mirror, make sure you have `git`, `docker` and `docker-compose-v2`
-installed. Each module uses builder containers with the proper tools, so you
-don't need to install anything extra.
+To build Mirror, make sure you have `git` and `docker` installed. Each module uses
+builder containers with the proper tools, so you don't need to install anything extra.
 
 Once you have docker installed, `git clone` this repository somewhere on your
-machine. At the repository root, run `make dev`. This will use the development
-docker compose configuration and run each module with the configs located in
+machine, preferably `/opt/mirror`. At the repository root, run `make dev`. This will 
+use the development docker compose configuration and run each module with the configs located in
 the module's directory.
 
 To configure some sensitive settings for modules, you will need to create a `.env` file.
 `.env.example` includes some sane defaults for a *testing* environment. At the very least you should
-change the `WEB_DJANGO_SECRET` before deploying.
+change the `WEB_DJANGO_SECRET` before deploying. Docker *will* get upset if you don't define everything.
 
-To emulate a production environment, make sure the directories `/storage` exists.
-Also, make sure to edit `mirrors.json` in `config/sync/configs/`.
+To emulate a production environment, make sure the directories `/storage` and `/var/log/mirror` exist.
+Also, make sure to edit `mirrors.json` in `config/sync/configs/`. At this point you'll want to install and run
+certbot to get HTTPS certificates for your domain. You can run `make certbot` to do this on any ubuntu host.
+The production config will not work without certificates! We are working on addressing this.
 Run `make prod` to use the production docker compose configuration and run each module
-as if it was running on Mirror.
+as if it was running on Mirror. 
 
 We currently use the development configuration on our personal machines and
 the production configuration on a test server. Both are frequently tested.
@@ -65,6 +66,13 @@ great place. If you need help or have questions about contributing, please
 > Mirror should be easy to maintain for future students. To make this possible,
 > it should be documented, structured, and written in in a way that students who
 > may have not yet taken higher-level CS classes can learn and contribute to.
+>
+> As such, mirror should be as plug-and-play as possible. Anything that can be containerized
+> or otherwise abstracted should be. The goal of this is to make the project fully understandable
+> by reading the source. No magic daemons configured on the host at 2AM on a weekend and never doccumented.
+> Similarly the project should strive to be fully statically built. In an ideal case it would not be neccessary
+> to download the full source and build it, and instead it could be pulled from a prebuilt container image with 
+> just a few configuration files on the host.
 >
 > ## Community
 >
