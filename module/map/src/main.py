@@ -13,8 +13,8 @@ import os
 # string constants
 LOKI_HOSTNAME = "loki:3100"
 QUERY_ENDPOINT = "http://" + LOKI_HOSTNAME + "/loki/api/v1/query_range"
-PROXY_QUERY = r'{container="proxy"} | json | __error__=`` | line_format `{{.request}} {{.remote_addr}}` | regexp `^GET /(?P<project>[^ /]*).*?(?P<ip>[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3})` | keep project, ip'
-RSYNC_QUERY = r'{container="rsyncd"} |= `rsync on` | regexp `^.*? rsync on (?P<module>[^ /]*).*? from .* \((?P<ip>.*?)\)` | keep module,ip'
+PROXY_QUERY = r'{container="proxy"} |= `2.5.0.0` | json | __error__=`` | line_format `{{.request}}` | regexp `^GET /(?P<project>[^ /]*)` | keep project, remote_addr'
+RSYNC_QUERY = r'{container="rsyncd"} |= `rsync on` | regexp `^.*? rsync on (?P<project>[^ /]*).*? from .* \((?P<remote_addr>.*?)\)` | keep project, remote_addr'
 MIRROR_FILE = "./mirrors.json"
 
 # globals
@@ -109,10 +109,12 @@ async def data_thread_task() -> None:
                 data = []
 
                 # extract relevant data from response body
-                if responses[0] is not None:
-                    data += [(entry["stream"]["ip"], entry["stream"]["module"]) for entry in responses[0]["data"]["result"]]
-                if responses[1] is not None:
-                    data += [(entry["stream"]["ip"], entry["stream"]["project"]) for entry in responses[1]["data"]["result"]]
+                for i in range(2):
+                    if responses[i] is not None:
+                        try:
+                            data += [(entry["stream"]["remote_addr"], entry["stream"]["project"]) for entry in responses[i]["data"]["result"]]
+                        except KeyError:
+                            logging.warning("Hit empty query result, skipping")
                 last_updated = update_time
 
                 for ip_addr, project in data:
