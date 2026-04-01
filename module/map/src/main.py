@@ -13,7 +13,7 @@ import os
 # string constants
 LOKI_HOSTNAME = "loki:3100"
 QUERY_ENDPOINT = "http://" + LOKI_HOSTNAME + "/loki/api/v1/query_range"
-PROXY_QUERY = r'{container="proxy"} |= `2.5.0.0` | json | __error__=`` | line_format `{{.request}}` | regexp `^GET /(?P<project>[^ /]*)` | keep project, remote_addr'
+PROXY_QUERY = r'{container="proxy"} | json | __error__=`` | line_format `{{.request}}` | regexp `^GET /(?P<project>[^ /]*)` | keep project, remote_addr'
 RSYNC_QUERY = r'{container="rsyncd"} |= `rsync on` | regexp `^.*? rsync on (?P<project>[^ /]*).*? from .* \((?P<remote_addr>.*?)\)` | keep project, remote_addr'
 MIRROR_FILE = "./mirrors.json"
 
