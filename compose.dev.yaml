@@ -19,7 +19,7 @@ services:
     volumes:
       - "${MIRROR_STORAGE}:/storage"
       - "./config/sync/configs:/mirror/configs:ro"
-      - "./config/sync/scripts:/mirror/scripts:ro"
+      - "./scripts:/mirror/scripts:ro"
       - "./config/sync/secrets:/mirror/secrets:ro"
       - /var/log/mirror:/mirror/error-logs
     networks:
