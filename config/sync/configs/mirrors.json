@@ -1204,8 +1204,19 @@
                 "src": "termux-pacman",
                 "syncs_per_day": 4,
                 "options": [
-                    "-a",
-                    "--delete"
+                    "--archive",
+                    "--compress",
+                    "--recursive",
+                    "--hard-links",
+                    "--fuzzy",
+                    "--no-perms",
+                    "--no-group",
+                    "--no-owner",
+                    "--delete",
+                    "--delete-delay",
+                    "--delay-updates",
+                    "--ignore-errors",
+                    "--exclude='.~tmp~'"
                 ]
             }
         },
