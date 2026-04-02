@@ -1191,6 +1191,24 @@
                 "source": "https://templeos.org/"
             }
         },
+        "termux-pacman": {
+            "color": "#201ad8",
+            "homepage": "https://termux-pacman.dev/",
+            "name": "Termux-Pacman",
+            "publicRsync": true,
+            "official": false,
+            "page": "Software",
+            "rsync": {
+                "dest": "/storage/termux-pacman",
+                "host": "sync.termux-pacman.dev",
+                "src": "termux-pacman",
+                "syncs_per_day": 4,
+                "options": [
+                    "-a",
+                    "--delete"
+                ]
+            }
+        },
         "torrents": {
             "color": "#a500a5",
             "homepage": "https://mirror.clarkson.edu",
