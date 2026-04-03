@@ -1196,8 +1196,9 @@
             "homepage": "https://termux-pacman.dev/",
             "name": "Termux-Pacman",
             "publicRsync": true,
-            "official": false,
+            "official": true,
             "page": "Software",
+            "icon":"img/projects/termux-pacman.png",
             "rsync": {
                 "dest": "/storage/termux-pacman",
                 "host": "sync.termux-pacman.dev",
