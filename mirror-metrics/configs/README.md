@@ -1,1 +1,0 @@
-Development configs for mirror-metrics are located here.

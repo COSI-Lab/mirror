@@ -1,7 +1,0 @@
-{
-  "database_url": "https://download.maxmind.com/app/geoip_download?edition_id=GeoLite2-City&suffix=tar.gz&license_key=",
-  "checksum_url": "https://download.maxmind.com/app/geoip_download?edition_id=GeoLite2-City&suffix=tar.gz.sha256&license_key=",
-  "database_filename": "GeoLite2-City.tar.gz",
-  "checksum_filename": "GeoLite2-City.tar.gz.sha256",
-  "maxmind_license_key": "CHANGEME"
-}

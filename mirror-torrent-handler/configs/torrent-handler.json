@@ -1,6 +1,0 @@
-{
-    "torrentFolder": "torrent",
-    "downloadFolder": "torrent/download",
-    "logServerHost": "mirrorlog",
-    "logServerPort": 4001
-}
