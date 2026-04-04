@@ -174,10 +174,7 @@
                     "--no-perms",
                     "--no-owner",
                     "--no-group",
-                    "--exclude=*",
-                    "--include=demo/***",
-                    "--include=release/***",
-                    "--include=source/***"
+                    "--exclude='.~tmp~'"
                 ],
                 "password_file": "secrets/blender.secret",
                 "src": "blender",
