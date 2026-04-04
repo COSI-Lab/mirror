@@ -39,7 +39,6 @@ services:
       - "/var/www/.well_known/acme_challenge:/var/www/.well_known/acme_challenge:ro"
       - "/etc/letsencrypt:/etc/letsencrypt:ro"
     environment:
-      - USE_SSL=${PROXY_USE_SSL:-true}
       - DNS_BASENAME=${MIRROR_DNS_BASENAME}
     networks:
       - mirror
@@ -119,6 +118,7 @@ services:
 #      - GF_AUTH_ANONYMOUS_ENABLED=true
       - GF_AUTH_BASIC_ENABLED=false
       - GF_INSTALL_PLUGINS=grafana-lokiexplore-app 1.0.39
+      - GF_SERVER_ROOT_URL=https://${MIRROR_DNS_BASENAME}/grafana/
     expose:
       - 3000
     volumes:

@@ -38,7 +38,6 @@ services:
       - "${MIRROR_STORAGE}:/storage:ro"
       - "./module/web/mirror_website/static:/var/www/static:ro"
     environment:
-      - USE_SSL=false
       - DNS_BASENAME=${MIRROR_DNS_BASENAME}
     networks:
       - mirror
