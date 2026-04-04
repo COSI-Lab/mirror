@@ -165,6 +165,8 @@
                 "host": "rsync.download.blender.org",
                 "options": [
                     "--archive",
+                    "--delete",
+                    "--delete-delay",
                     "--compress",
                     "--recursive",
                     "--hard-links",
@@ -172,7 +174,10 @@
                     "--no-perms",
                     "--no-owner",
                     "--no-group",
-                    "--exclude='.~tmp~'"
+                    "--exclude=*",
+                    "--include=demo/***",
+                    "--include=release/***",
+                    "--include=source/***"
                 ],
                 "password_file": "secrets/blender.secret",
                 "src": "blender",
