@@ -916,6 +916,8 @@
                 "host": "rsync.parrot.sh",
                 "options": [
                     "--recursive",
+                    "--links",
+                    "--hard-links",
                     "--no-perms",
                     "--no-group",
                     "--no-owner",
