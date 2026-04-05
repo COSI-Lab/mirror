@@ -51,7 +51,7 @@ services:
     container_name: rsyncd
     ports:
       - "0.0.0.0:873:873"
-      - "[::]:873"
+      - "[::]:873:873"
     restart: unless-stopped
     volumes:
       - "./config/sync/configs/mirrors.json:/mirrors.json:ro"
@@ -133,6 +133,7 @@ services:
 
 networks:
   mirror:
+    enable_ipv6: true
   loki:
 
 volumes:
