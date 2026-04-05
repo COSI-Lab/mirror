@@ -639,7 +639,7 @@
             "publicRsync":true,
             "rsync":{
                 "host":"master.gnome.org",
-                "src":"",
+                "src":"gnomeftp",
                 "dest":"/storage/gnome",
                 "password_file":"secrets/gnome.secret",
                 "options": [
