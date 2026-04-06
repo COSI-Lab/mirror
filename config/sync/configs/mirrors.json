@@ -1385,17 +1385,17 @@
             }
         },
         "voidlinux": {
-            "alternative": "http://mirrors.servercentral.com/voidlinux/",
+            "alternative": "http://mirrors.summithq.com/voidlinux/",
             "color": "#000000",
             "homepage": "https://www.voidlinux.org/",
             "icon": "img/projects/void.png",
             "name": "VoidLinux",
-            "official": true,
+            "official": false,
             "page": "Distributions",
             "publicRsync": true,
             "rsync": {
                 "dest": "/storage/voidlinux",
-                "host": "alpha.de.repo.voidlinux.org",
+                "host": "repo-sync.voidlinux.org",
                 "options": [
                     "--archive",
                     "--compress",
@@ -1414,10 +1414,8 @@
                     "--exclude=\"*.lock\"",
                     "--exclude=\"*.XXXX*\""
                 ],
-                "password_file": "secrets/voidlinux.secret",
                 "src": "voidlinux",
-                "syncs_per_day": 4,
-                "user": "vmirror"
+                "syncs_per_day": 4
             }
         },
         "wikimedia": {
