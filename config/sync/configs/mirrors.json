@@ -608,6 +608,48 @@
                 "syncs_per_day": 24
             }
         },
+        "gimp": {
+            "name": "GIMP",
+            "official": false,
+            "page": "Software",
+            "homepage": "https://gimp.org/",
+            "color":"#235add",
+            "icon":"img/projects/gimp.png",
+            "publicRsync":true,
+            "rsync":{
+                "host":"master.gimp.org",
+                "src":"gimp/pub",
+                "dest":"/storage/gimp",
+                "password_file":"secrets/gimp.secret",
+                "options": [
+                    "-vrlpt",
+                    "--delete-after"
+                ],
+                "syncs_per_day": 2,
+                "user":"clarkson-edu"
+            }
+        },
+        "gnome": {
+            "name": "GNOME",
+            "official": false,
+            "page": "Software",
+            "homepage": "https://gnome.org/",
+            "color":"#630a0a",
+            "icon":"img/projects/gnome.png",
+            "publicRsync":true,
+            "rsync":{
+                "host":"master.gnome.org",
+                "src":"gnomeftp",
+                "dest":"/storage/gnome",
+                "password_file":"secrets/gnome.secret",
+                "options": [
+                    "-vrlpt",
+                    "--delete-after"
+                ],
+                "syncs_per_day": 2,
+                "user":"mirror"
+            }
+        },
         "ipfire": {
             "alternative": "http://mirrors.rit.edu/ipfire/",
             "color": "#7c4848",
