@@ -618,7 +618,7 @@
             "publicRsync":true,
             "rsync":{
                 "host":"master.gimp.org",
-                "src":"",
+                "src":"gimp/pub",
                 "dest":"/storage/gimp",
                 "password_file":"secrets/gimp.secret",
                 "options": [
@@ -626,7 +626,7 @@
                     "--delete-after"
                 ],
                 "syncs_per_day": 2,
-                "user":""
+                "user":"clarkson-edu"
             }
         },
         "gnome": {
