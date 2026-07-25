@@ -41,6 +41,9 @@
 // Project Includes
 #include <mirror/sync_scheduler/SyncJob.hpp>
 
+// Special exit codes
+#define RSYNC_VANISHED 24
+
 namespace mirror::sync_scheduler
 {
 JobManager::JobManager()
@@ -139,9 +142,9 @@ auto JobManager::reap_processes() -> std::vector<::pid_t>
             childProcessID
         );
 
-        int                status      = 0;
-        const bool         isKnownJob  = m_ActiveJobs.contains(childProcessID);
-        std::chrono::hours syncDuration;
+        int        status     = 0;
+        const bool isKnownJob = m_ActiveJobs.contains(childProcessID);
+        const bool isRsync    = m_ActiveJobs.at(childProcessID).isRsync;
 
         // NOLINTNEXTLINE(misc-include-cleaner)
         switch (::waitpid(childProcessID, &status, WNOHANG))
@@ -164,7 +167,8 @@ auto JobManager::reap_processes() -> std::vector<::pid_t>
             // NOLINTNEXTLINE(*-include-cleaner)
             const int exitStatus = WEXITSTATUS(status);
 
-            if (isKnownJob && exitStatus == EXIT_SUCCESS)
+            if (isKnownJob && exitStatus == EXIT_SUCCESS
+                || (isRsync && exitStatus == RSYNC_VANISHED))
             {
                 spdlog::info(
                     "Project {} successfully synced!",
@@ -178,7 +182,8 @@ auto JobManager::reap_processes() -> std::vector<::pid_t>
                     = this->write_fail_to_file(childProcessID);
 
                 spdlog::warn(
-                    "Project {} failed to sync! See {}. Exit code: {} (pid: {})",
+                    "Project {} failed to sync! See {}. Exit code: {} (pid: "
+                    "{})",
                     m_ActiveJobs.at(childProcessID).jobName,
                     logFileName,
                     exitStatus,
@@ -211,22 +216,20 @@ auto JobManager::reap_processes() -> std::vector<::pid_t>
 
 auto JobManager::write_fail_to_file(const ::pid_t processID) -> std::string
 {
-    const auto startTime            = m_ActiveJobs.at(processID).startTime;
-    const std::time_t tStartTime    = std::chrono::system_clock::to_time_t(startTime);
-    const auto tmStartTime          = std::localtime(&tStartTime);
+    const auto        startTime = m_ActiveJobs.at(processID).startTime;
+    const std::time_t tStartTime
+        = std::chrono::system_clock::to_time_t(startTime);
+    const auto tmStartTime = std::localtime(&tStartTime);
+    const auto jobName     = m_ActiveJobs.at(processID).jobName;
 
     char timestamp[14];
-    std::strftime(timestamp,sizeof(timestamp),"%Y%j%H%M%S",tmStartTime);
+    std::strftime(timestamp, sizeof(timestamp), "%Y%j%H%M%S", tmStartTime);
 
     const auto errorLogPath = std::filesystem::relative("error-logs");
 
     // only one process can run for a given jobName at a time so we know
     // logFileName will be unique
-    auto logFileName = std::format(
-        "{}-{}.log",
-        m_ActiveJobs.at(processID).jobName,
-        timestamp
-    );
+    auto logFileName = std::format("{}-{}.log", jobName, timestamp);
 
     std::ofstream logFile(errorLogPath / logFileName);
 
@@ -236,11 +239,20 @@ auto JobManager::write_fail_to_file(const ::pid_t processID) -> std::string
     std::string pipeContents;
     pipeContents.resize(bytesAvailable + 1);
 
-    ::read(
+    int rc = ::read(
         m_ActiveJobs.at(processID).stdPipe,
         pipeContents.data(),
         bytesAvailable
     );
+
+    if (rc < bytesAvailable)
+    {
+        spdlog::warn(
+            "Something went wrong while reading output from {}. Log file may "
+            "be incomplete.",
+            jobName
+        );
+    }
 
     logFile << pipeContents;
 
@@ -373,7 +385,8 @@ auto JobManager::kill_all_jobs() -> void
 auto JobManager::register_job(
     const std::string& jobName,
     const ::pid_t      processID,
-    const int          stdPipe
+    const int          stdPipe,
+    const bool         isRsync
 ) -> void
 {
     spdlog::debug(
@@ -385,9 +398,10 @@ auto JobManager::register_job(
     const std::lock_guard<std::mutex> jobLock(m_JobMutex);
     m_ActiveJobs.emplace(
         processID,
-        SyncJob { .jobName    = jobName,
-                  .stdPipe = stdPipe,
-                  .startTime  = std::chrono::system_clock::now() }
+        SyncJob { .jobName   = jobName,
+                  .stdPipe   = stdPipe,
+                  .startTime = std::chrono::system_clock::now(),
+                  .isRsync   = isRsync }
     );
 }
 
@@ -511,8 +525,8 @@ auto JobManager::start_job(
         std::string errorMessage(BUFSIZ, '\0');
 
         // restore stdout and stderr so we can log the message
-        ::dup2(oldStdout,STDOUT_FILENO);
-        ::dup2(oldStderr,STDERR_FILENO);
+        ::dup2(oldStdout, STDOUT_FILENO);
+        ::dup2(oldStderr, STDERR_FILENO);
 
         // close unused fds
         ::close(oldStdout);
@@ -547,7 +561,11 @@ auto JobManager::start_job(
     // Close write end of the stdout/stderr pipe in the parent process
     ::close(stdPipes.at(1));
 
-    this->register_job(jobName, pid, stdPipes.at(0));
+    // Detect if this job runs rsync. At present this is just so we can
+    // determine if exit code 24 should be treated as an error or ignored.
+    bool isRsync = (command.at(0) == "rsync");
+
+    this->register_job(jobName, pid, stdPipes.at(0), isRsync);
     return true;
 }
 } // namespace mirror::sync_scheduler
