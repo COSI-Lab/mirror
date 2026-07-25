@@ -18,5 +18,6 @@ struct SyncJob
     // merged stdout and stderr
     int                                                stdPipe = -1;
     std::chrono::time_point<std::chrono::system_clock> startTime;
+    bool isRsync = false;
 };
 } // namespace mirror::sync_scheduler
