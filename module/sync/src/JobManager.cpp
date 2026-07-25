@@ -168,7 +168,7 @@ auto JobManager::reap_processes() -> std::vector<::pid_t>
             const int exitStatus = WEXITSTATUS(status);
 
             if (isKnownJob && exitStatus == EXIT_SUCCESS
-                || (isRsync && exitStatus == RSYNC_VANISHED))
+                || isRsync && exitStatus == RSYNC_VANISHED)
             {
                 spdlog::info(
                     "Project {} successfully synced!",
@@ -563,7 +563,7 @@ auto JobManager::start_job(
 
     // Detect if this job runs rsync. At present this is just so we can
     // determine if exit code 24 should be treated as an error or ignored.
-    bool isRsync = (command.at(0) == "rsync");
+    bool isRsync = (command.at(0) == "/usr/bin/rsync");
 
     this->register_job(jobName, pid, stdPipes.at(0), isRsync);
     return true;
