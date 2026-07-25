@@ -38,7 +38,7 @@ services:
       - "./config/nginx-prod.conf:/etc/nginx/templates/default.conf.template:ro"
       - "${MIRROR_STORAGE}:/storage:ro"
       - "./module/web/mirror_website/static:/var/www/static:ro"
-      - "/var/www/.well_known/acme_challenge:/var/www/.well_known/acme_challenge:ro"
+      - "/var/www/.well-known/acme-challenge:/var/www/.well_known/acme-challenge:ro"
       - "/etc/letsencrypt:/etc/letsencrypt:ro"
     environment:
       - DNS_BASENAME=${MIRROR_DNS_BASENAME}

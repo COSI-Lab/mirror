@@ -1420,7 +1420,7 @@
                     "--no-group",
                     "--no-owner",
                     "--delete",
-                    "--delete-delay",
+                    "--delete-before",
                     "--delay-updates",
                     "--ignore-errors",
                     "--exclude='.~tmp~'"
