@@ -142,9 +142,11 @@ auto JobManager::reap_processes() -> std::vector<::pid_t>
             childProcessID
         );
 
-        int        status     = 0;
-        const bool isKnownJob = m_ActiveJobs.contains(childProcessID);
-        const bool isRsync    = m_ActiveJobs.at(childProcessID).isRsync;
+        int        status      = 0;
+        const bool isKnownJob  = m_ActiveJobs.contains(childProcessID);
+        if (isKnownJob) {
+            const bool isRsync = m_ActiveJobs.at(childProcessID).isRsync;
+        }
 
         // NOLINTNEXTLINE(misc-include-cleaner)
         switch (::waitpid(childProcessID, &status, WNOHANG))
